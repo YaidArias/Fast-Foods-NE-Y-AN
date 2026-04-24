@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#D35400">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NE&AN">
+    <meta name="description" content="Comidas Rápidas NE&AN - Chuzos, chorizos y más">
+
+    <title>Comidas Rápidas NE&AN</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="images/icon-192.png">
+
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content">
+            <div class="logo-container">
+                <div class="logo-circle">
+                    <span class="logo-text">NE&AN</span>
+                </div>
+            </div>
+            <h1 class="splash-title">Comidas Rápidas</h1>
+            <p class="splash-subtitle">Chuzos, Chorizos & Más</p>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="app" class="app hidden">
+
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-small">
+                    <span>NE&AN</span>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" id="cart-btn" onclick="showCart()">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-badge" id="cart-badge">0</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- Hero Section -->
+            <section class="hero">
+                <div class="hero-content">
+                    <h2>¡Bienvenido!</h2>
+                    <p>Pide tu comida favorita y te la llevamos gratis a tu casa 🛵</p>
+                    <div class="hero-badge">
+                        <i class="fas fa-motorcycle"></i>
+                        <span>Domicilio Gratis</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Menu Section -->
+            <section class="menu-section">
+                <h3 class="section-title">
+                    <i class="fas fa-utensils"></i>
+                    Nuestro Menú
+                </h3>
+                <div class="menu-grid" id="menu-grid">
+                    <!-- Los productos se cargan con JS -->
+                </div>
+            </section>
+
+            <!-- Info Section -->
+            <section class="info-section">
+                <div class="info-card">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <h4>Horario</h4>
+                        <p>Lunes a Domingo</p>
+                        <p>11:00 AM - 9:00 PM</p>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <div>
+                        <h4>Ubicación</h4>
+                        <p>Santander de Quilichao, Cauca</p>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-phone"></i>
+                    <div>
+                        <h4>Contacto</h4>
+                        <p>317 779 8409</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class="footer">
+                <p>Comidas Rápidas NE&AN</p>
+                <p class="footer-sub">Hecho con ❤️ en Santander de Quilichao</p>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Product Detail Modal -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="modal-product" id="modal-product">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="modal cart-modal">
+        <div class="modal-content cart-content">
+            <div class="cart-header">
+                <h3><i class="fas fa-shopping-cart"></i> Tu Pedido</h3>
+                <button class="modal-close" onclick="closeCart()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="cart-items" id="cart-items">
+                <!-- Items dinámicos -->
+            </div>
+            <div class="cart-footer">
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span id="cart-total">$0</span>
+                </div>
+                <button class="btn-checkout" onclick="checkout()">
+                    <i class="fab fa-whatsapp"></i>
+                    Enviar Pedido por WhatsApp
+                </button>
+                <p class="checkout-note">Te redirigiremos a WhatsApp para confirmar tu pedido</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal (Datos del cliente) -->
+    <div id="checkout-modal" class="modal">
+        <div class="modal-content checkout-form">
+            <div class="cart-header">
+                <h3><i class="fas fa-user"></i> Datos de Entrega</h3>
+                <button class="modal-close" onclick="closeCheckout()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="checkout-form" onsubmit="sendOrder(event)">
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Nombre completo *</label>
+                    <input type="text" id="customer-name" required placeholder="Tu nombre">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-phone"></i> Teléfono *</label>
+                    <input type="tel" id="customer-phone" required placeholder="3XX XXX XXXX">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-map-marker-alt"></i> Dirección de entrega *</label>
+                    <textarea id="customer-address" required placeholder="Barrio, calle, casa/apto, punto de referencia..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-sticky-note"></i> Notas adicionales</label>
+                    <textarea id="customer-notes" placeholder="Sin cebolla, salsa aparte, etc."></textarea>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-money-bill-wave"></i> Método de pago</label>
+                    <div class="payment-options">
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="Efectivo" checked>
+                            <span><i class="fas fa-money-bill"></i> Efectivo</span>
+                        </label>
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="Nequi">
+                            <span><i class="fas fa-mobile-alt"></i> Nequi</span>
+                        </label>
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="Daviplata">
+                            <span><i class="fas fa-wallet"></i> Daviplata</span>
+                        </label>
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="Bre-B">
+                            <span><i class="fas fa-university"></i> Bre-B</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="order-summary">
+                    <h4>Resumen del pedido</h4>
+                    <div id="order-summary-items"></div>
+                    <div class="summary-total">
+                        <span>Total:</span>
+                        <span id="order-summary-total">$0</span>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit">
+                    <i class="fab fa-whatsapp"></i>
+                    Confirmar y Enviar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toast-message">Producto agregado</span>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
