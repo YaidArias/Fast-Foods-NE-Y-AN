@@ -312,8 +312,8 @@ async function sendOrder(event) {
 async function sendNtfyNotification(orderData) {
     const ntfyTopic = 'nean-pedidos-sq-2026';
     
-    const message = 
-        `🔔 NUEVO PEDIDO NE&AN\n` +
+    const title = encodeURIComponent('🔔 Nuevo Pedido NE&AN');
+    const message = encodeURIComponent(
         `📋 Orden: ${orderData.orderId}\n` +
         `👤 Cliente: ${orderData.customerName}\n` +
         `📱 Tel: ${orderData.customerPhone}\n` +
@@ -322,45 +322,20 @@ async function sendNtfyNotification(orderData) {
         `🛒 PRODUCTOS:\n` +
         orderData.items.map(i => `• ${i.quantity}x ${i.name} - $${i.price.toLocaleString('es-CO')}`).join('\n') +
         `\n\n💰 TOTAL: $${orderData.total.toLocaleString('es-CO')}\n` +
-        `${orderData.notes ? '📝 Notas: ' + orderData.notes + '\n' : ''}`;
+        `${orderData.notes ? '📝 Notas: ' + orderData.notes + '\n' : ''}`
+    );
+    
+    // Método que funciona desde cualquier sitio (sin CORS)
+    const url = `https://ntfy.sh/${ntfyTopic}?title=${title}&message=${message}&priority=high&tags=shopping_cart,fire`;
     
     try {
-        // Método 1: fetch normal
-        const response = await fetch(`https://ntfy.sh/${ntfyTopic}`, {
-            method: 'POST',
-            body: message,
-            headers: {
-                'Title': '🔔 Nuevo Pedido NE&AN',
-                'Priority': 'high',
-                'Tags': 'shopping_cart,fire'
-            }
-        });
-        
-        if (response.ok) {
-            console.log('✅ Notificación ntfy enviada por fetch');
-            return;
-        }
+        // Usar XMLHttpRequest en lugar de fetch (mejor compatibilidad)
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.send();
+        console.log('✅ Notificación enviada por GET request');
     } catch (e) {
-        console.log('❌ Fetch falló, intentando método alternativo:', e);
-    }
-    
-    // Método 2: Usar iframe oculto (evita CORS)
-    try {
-        const encodedMessage = encodeURIComponent(message);
-        const url = `https://ntfy.sh/${ntfyTopic}?message=${encodedMessage}&priority=high&title=${encodeURIComponent('🔔 Nuevo Pedido NE&AN')}`;
-        
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = url;
-        document.body.appendChild(iframe);
-        
-        setTimeout(() => {
-            document.body.removeChild(iframe);
-        }, 2000);
-        
-        console.log('✅ Notificación ntfy enviada por iframe');
-    } catch (e2) {
-        console.log('❌ Ambos métodos fallaron:', e2);
+        console.log('❌ Error:', e);
     }
 }
 
