@@ -15,7 +15,7 @@ const PRODUCTS = [
 
 const BUSINESS = {
     name: "Comidas Rápidas NE&AN",
-    phone: "573177798409",
+    phone: "3156848558",
     whatsappNumber: "3156848558 - 3226144727",
     address: "La Aurora, Cesar",
     delivery: "Gratis"
