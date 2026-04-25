@@ -1494,19 +1494,23 @@ body {
    AGREGAR AL FINAL DE css/style.css
    ============================================ */
 
+/* ============================================
+   AGREGAR AL FINAL DE css/style.css
+   ============================================ */
+
 /* ── Logo en Splash Screen ──────────────── */
 .splash-logo-img {
-    width: 220px;
-    height: 220px;
+    width: 240px;
+    height: 240px;
     object-fit: contain;
-    border-radius: 50%;
     animation: pulse 2s infinite;
-    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.3));
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.25));
+    /* Sin border-radius para respetar la forma del logo */
 }
 
-/* Ocultar elementos anteriores del splash que ya no se usan */
-.logo-circle { display: none; }
-.splash-title { display: none; }
+/* Ocultar elementos anteriores del splash */
+.logo-circle   { display: none; }
+.splash-title  { display: none; }
 .splash-subtitle { display: none; }
 
 /* ── Logo en Header ─────────────────────── */
@@ -1514,14 +1518,14 @@ body {
     background: transparent !important;
     padding: 0 !important;
     box-shadow: none !important;
+    border-radius: 0 !important;
 }
 
 .header-logo-img {
-    width: 52px;
-    height: 52px;
+    width: 56px;
+    height: 56px;
     object-fit: contain;
-    border-radius: 50%;
-    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
+    /* Sin border-radius */
 }
 
 /* ── Tarjetas uniformes ─────────────────── */
