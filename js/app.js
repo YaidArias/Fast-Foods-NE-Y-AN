@@ -325,7 +325,8 @@ async function sendNtfyNotification(orderData) {
         `${orderData.notes ? '📝 Notas: ' + orderData.notes + '\n' : ''}`;
     
     try {
-        await fetch(`https://ntfy.sh/${ntfyTopic}`, {
+        // Método 1: fetch normal
+        const response = await fetch(`https://ntfy.sh/${ntfyTopic}`, {
             method: 'POST',
             body: message,
             headers: {
@@ -334,9 +335,32 @@ async function sendNtfyNotification(orderData) {
                 'Tags': 'shopping_cart,fire'
             }
         });
-        console.log('Notificación ntfy enviada');
+        
+        if (response.ok) {
+            console.log('✅ Notificación ntfy enviada por fetch');
+            return;
+        }
     } catch (e) {
-        console.log('Error enviando notificación:', e);
+        console.log('❌ Fetch falló, intentando método alternativo:', e);
+    }
+    
+    // Método 2: Usar iframe oculto (evita CORS)
+    try {
+        const encodedMessage = encodeURIComponent(message);
+        const url = `https://ntfy.sh/${ntfyTopic}?message=${encodedMessage}&priority=high&title=${encodeURIComponent('🔔 Nuevo Pedido NE&AN')}`;
+        
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        
+        setTimeout(() => {
+            document.body.removeChild(iframe);
+        }, 2000);
+        
+        console.log('✅ Notificación ntfy enviada por iframe');
+    } catch (e2) {
+        console.log('❌ Ambos métodos fallaron:', e2);
     }
 }
 
