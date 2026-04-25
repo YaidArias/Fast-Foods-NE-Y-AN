@@ -12,9 +12,8 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, setDoc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAexLH_x_hb5KQoEKkPHjTzfwvuAJ6ZHEA",
@@ -25,28 +24,24 @@
             appId: "1:992427551621:web:c5b2286cb4cad3e83332ec"
         };
 
-        const app  = initializeApp(firebaseConfig);
-        window.db  = getFirestore(app);
-        window.auth    = getAuth(app);
-        window.storage = getStorage(app);
+        const app = initializeApp(firebaseConfig);
+        window.db   = getFirestore(app);
+        window.auth = getAuth(app);
 
-        window.fsCollection  = collection;
-        window.fsAddDoc      = addDoc;
-        window.fsOnSnapshot  = onSnapshot;
-        window.fsQuery       = query;
-        window.fsOrderBy     = orderBy;
-        window.fsDoc         = doc;
-        window.fsUpdateDoc   = updateDoc;
-        window.fsDeleteDoc   = deleteDoc;
-        window.fsSetDoc      = setDoc;
-        window.fsGetDoc      = getDoc;
-        window.fsSignIn      = signInWithEmailAndPassword;
-        window.fsOnAuth      = onAuthStateChanged;
-        window.fsSignOut     = signOut;
-        window.stRef         = ref;
-        window.stUpload      = uploadBytes;
-        window.stGetURL      = getDownloadURL;
-        window.stDelete      = deleteObject;
+        window.fsCollection = collection;
+        window.fsAddDoc     = addDoc;
+        window.fsOnSnapshot = onSnapshot;
+        window.fsQuery      = query;
+        window.fsOrderBy    = orderBy;
+        window.fsDoc        = doc;
+        window.fsUpdateDoc  = updateDoc;
+        window.fsDeleteDoc  = deleteDoc;
+        window.fsSetDoc     = setDoc;
+        window.fsGetDoc     = getDoc;
+        window.fsGetDocs    = getDocs;
+        window.fsSignIn     = signInWithEmailAndPassword;
+        window.fsOnAuth     = onAuthStateChanged;
+        window.fsSignOut    = signOut;
     </script>
 </head>
 <body>
@@ -54,9 +49,7 @@
 <!-- ── LOGIN ─────────────────────────────────────────────── -->
 <div id="login-screen" class="login-screen">
     <div class="login-box">
-        <div class="login-logo">
-            <span>NE&AN</span>
-        </div>
+        <div class="login-logo"><span>NE&AN</span></div>
         <h2>Panel de Administración</h2>
         <p class="login-sub">Ingresa con tu cuenta de administrador</p>
         <form id="login-form" onsubmit="doLogin(event)">
@@ -105,7 +98,7 @@
     <!-- Main content -->
     <main class="admin-main">
 
-        <!-- ── SECCIÓN PEDIDOS ── -->
+        <!-- ── PEDIDOS ── -->
         <section id="sec-pedidos" class="section active">
             <div class="section-header">
                 <h2><i class="fas fa-receipt"></i> Pedidos</h2>
@@ -114,18 +107,18 @@
                 </button>
             </div>
             <div class="filters">
-                <button class="filter active" data-f="all"        onclick="setFilter(this,'all')">Todos</button>
-                <button class="filter"         data-f="nuevo"     onclick="setFilter(this,'nuevo')">Nuevos</button>
-                <button class="filter"         data-f="preparando" onclick="setFilter(this,'preparando')">Preparando</button>
-                <button class="filter"         data-f="listo"     onclick="setFilter(this,'listo')">Listos</button>
-                <button class="filter"         data-f="entregado" onclick="setFilter(this,'entregado')">Entregados</button>
+                <button class="filter active" onclick="setFilter(this,'all')">Todos</button>
+                <button class="filter" onclick="setFilter(this,'nuevo')">Nuevos</button>
+                <button class="filter" onclick="setFilter(this,'preparando')">Preparando</button>
+                <button class="filter" onclick="setFilter(this,'listo')">Listos</button>
+                <button class="filter" onclick="setFilter(this,'entregado')">Entregados</button>
             </div>
             <div id="pedidos-list" class="cards-list">
                 <div class="empty"><i class="fas fa-spinner fa-spin"></i><p>Cargando...</p></div>
             </div>
         </section>
 
-        <!-- ── SECCIÓN PRODUCTOS ── -->
+        <!-- ── PRODUCTOS ── -->
         <section id="sec-productos" class="section">
             <div class="section-header">
                 <h2><i class="fas fa-hamburger"></i> Productos</h2>
@@ -138,7 +131,7 @@
             </div>
         </section>
 
-        <!-- ── SECCIÓN NEGOCIO ── -->
+        <!-- ── NEGOCIO ── -->
         <section id="sec-negocio" class="section">
             <div class="section-header">
                 <h2><i class="fas fa-store"></i> Información del Negocio</h2>
@@ -162,7 +155,7 @@
                         <input type="tel" id="neg-tel2" placeholder="3226144727">
                     </div>
                     <div class="field">
-                        <label><i class="fas fa-clock"></i> Días de atención</label>
+                        <label><i class="fas fa-calendar-alt"></i> Días de atención</label>
                         <input type="text" id="neg-dias" placeholder="Viernes, Sábados y Domingo">
                     </div>
                     <div class="field">
@@ -196,7 +189,6 @@
         </div>
         <form id="product-form" onsubmit="saveProduct(event)">
             <input type="hidden" id="prod-id">
-            <input type="hidden" id="prod-img-url">
 
             <div class="field">
                 <label>Nombre del producto *</label>
@@ -216,18 +208,20 @@
                     <input type="text" id="prod-badge" placeholder="Ej: Nuevo, Especial">
                 </div>
             </div>
+
+            <!-- URL de imagen desde Cloudinary -->
             <div class="field">
-                <label>Imagen del producto</label>
-                <div class="img-upload-area" id="img-upload-area" onclick="document.getElementById('prod-img-file').click()">
-                    <img id="img-preview" src="" alt="" class="hidden">
-                    <div id="img-placeholder">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <p>Toca para subir imagen</p>
-                        <small>JPG, PNG — máx 2MB</small>
-                    </div>
+                <label><i class="fas fa-image"></i> URL de imagen (Cloudinary)</label>
+                <div class="cloudinary-tip">
+                    <i class="fas fa-info-circle"></i>
+                    Sube tu foto en <a href="https://cloudinary.com" target="_blank">cloudinary.com</a> → Media Library → copia la URL y pégala aquí
                 </div>
-                <input type="file" id="prod-img-file" accept="image/*" onchange="previewImage(event)" style="display:none">
+                <input type="url" id="prod-imagen" placeholder="https://res.cloudinary.com/tu-cuenta/image/upload/...">
+                <div class="img-preview-wrap" id="img-preview-wrap" style="display:none">
+                    <img id="img-preview" src="" alt="Vista previa">
+                </div>
             </div>
+
             <div class="field">
                 <label>Estado</label>
                 <select id="prod-activo">
@@ -235,6 +229,7 @@
                     <option value="false">Inactivo (oculto)</option>
                 </select>
             </div>
+
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeProductForm()">Cancelar</button>
                 <button type="submit" class="btn-primary" id="save-prod-btn">

@@ -2,13 +2,11 @@
    NE&AN — ADMIN PANEL JS
    ============================================ */
 
-// ── Estado ────────────────────────────────
-let currentFilter    = 'all';
-let pedidosListener  = null;
+let currentFilter     = 'all';
+let pedidosListener   = null;
 let productosListener = null;
-let allPedidos       = [];
-let editingProductId = null;
-let imgFile          = null;
+let allPedidos        = [];
+let editingProductId  = null;
 
 // ── Utilidades ────────────────────────────
 function formatPrice(p) {
@@ -58,7 +56,7 @@ window.doLogin = async function(e) {
             document.getElementById('login-email').value,
             document.getElementById('login-password').value
         );
-    } catch (ex) {
+    } catch {
         err.classList.remove('hidden');
         btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
         btn.disabled = false;
@@ -66,7 +64,7 @@ window.doLogin = async function(e) {
 };
 
 window.doLogout = async function() {
-    if (pedidosListener)   { pedidosListener();   pedidosListener = null; }
+    if (pedidosListener)   { pedidosListener();   pedidosListener   = null; }
     if (productosListener) { productosListener(); productosListener = null; }
     await window.fsSignOut(window.auth);
 };
@@ -83,7 +81,6 @@ window.showSection = function(name) {
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     document.getElementById('sec-' + name).classList.add('active');
     document.querySelector(`.nav-item[onclick*="${name}"]`).classList.add('active');
-
     if (name === 'pedidos')   initPedidos();
     if (name === 'productos') initProductos();
 };
@@ -93,7 +90,7 @@ window.showSection = function(name) {
 // ════════════════════════════════════════════
 function initPedidos() {
     if (pedidosListener) return;
-    const q = window.fsQuery(window.fsCollection(window.db, 'orders'), window.fsOrderBy('createdAt','desc'));
+    const q = window.fsQuery(window.fsCollection(window.db, 'orders'), window.fsOrderBy('createdAt', 'desc'));
     pedidosListener = window.fsOnSnapshot(q, snap => {
         allPedidos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         renderPedidos();
@@ -118,7 +115,7 @@ function renderPedidos() {
                 </div>
                 <span class="badge-estado badge-${p.status}">${statusLabel(p.status)}</span>
             </div>
-            <div class="pedido-info"><i class="fas fa-user"></i> ${p.customerName} &nbsp;|&nbsp; <i class="fas fa-phone"></i> ${p.customerPhone}</div>
+            <div class="pedido-info"><i class="fas fa-user"></i> ${p.customerName} &nbsp;|&nbsp; <i class="fas fa-phone"></i> <a href="tel:${p.customerPhone}">${p.customerPhone}</a></div>
             <div class="pedido-info"><i class="fas fa-map-marker-alt"></i> ${p.customerAddress}</div>
             ${p.notes ? `<div class="pedido-info"><i class="fas fa-sticky-note"></i> ${p.notes}</div>` : ''}
             <div class="pedido-items">
@@ -172,17 +169,11 @@ window.refreshPedidos = function() {
 // ════════════════════════════════════════════
 function initProductos() {
     if (productosListener) return;
-    const q = window.fsQuery(window.fsCollection(window.db, 'productos'), window.fsOrderBy('orden', 'asc'));
-    productosListener = window.fsOnSnapshot(q, snap => {
+    const colRef = window.fsCollection(window.db, 'productos');
+    productosListener = window.fsOnSnapshot(colRef, snap => {
         const prods = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        prods.sort((a, b) => (a.orden || 0) - (b.orden || 0));
         renderProductos(prods);
-    }, err => {
-        // Si no hay orden, cargar sin ordenar
-        const q2 = window.fsCollection(window.db, 'productos');
-        productosListener = window.fsOnSnapshot(q2, snap2 => {
-            const prods = snap2.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderProductos(prods);
-        });
     });
 }
 
@@ -193,20 +184,22 @@ function renderProductos(prods) {
         return;
     }
     grid.innerHTML = prods.map(p => `
-        <div class="prod-card ${!p.activo ? 'prod-inactive' : ''}">
-            <div class="prod-card-img">
-                ${p.imagen ? `<img src="${p.imagen}" alt="${p.nombre}">` : `<i class="fas fa-hamburger"></i>`}
+        <div class="prod-card ${p.activo === false ? 'inactive' : ''}">
+            <div class="prod-img">
+                ${p.imagen ? `<img src="${p.imagen}" alt="${p.nombre}" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-hamburger\\'></i>'">` : `<i class="fas fa-hamburger"></i>`}
             </div>
-            <div class="prod-card-body">
+            <div class="prod-body">
                 ${p.badge ? `<span class="prod-badge-tag">${p.badge}</span>` : ''}
-                <div class="prod-card-name">${p.nombre}</div>
-                <div class="prod-card-desc">${p.descripcion}</div>
-                <div class="prod-card-price">${formatPrice(p.precio)}</div>
-                ${!p.activo ? '<span style="font-size:0.75rem;color:var(--danger);font-weight:600">● Inactivo</span>' : '<span style="font-size:0.75rem;color:var(--success);font-weight:600">● Activo</span>'}
+                <div class="prod-name">${p.nombre}</div>
+                <div class="prod-desc">${p.descripcion}</div>
+                <div class="prod-price">${formatPrice(p.precio)}</div>
+                <span class="prod-status ${p.activo !== false ? 'active' : 'inactive'}">
+                    ${p.activo !== false ? '● Activo' : '● Inactivo'}
+                </span>
             </div>
-            <div class="prod-card-footer">
+            <div class="prod-footer">
                 <button class="btn-edit" onclick="openProductForm('${p.id}')"><i class="fas fa-edit"></i> Editar</button>
-                <button class="btn-del"  onclick="deleteProducto('${p.id}','${p.imagen || ''}')"><i class="fas fa-trash"></i></button>
+                <button class="btn-del"  onclick="deleteProducto('${p.id}')"><i class="fas fa-trash"></i></button>
             </div>
         </div>
     `).join('');
@@ -214,30 +207,38 @@ function renderProductos(prods) {
 
 window.openProductForm = async function(prodId = null) {
     editingProductId = prodId;
-    imgFile = null;
     document.getElementById('product-form').reset();
     document.getElementById('prod-id').value = '';
-    document.getElementById('prod-img-url').value = '';
-    document.getElementById('img-preview').classList.add('hidden');
-    document.getElementById('img-placeholder').classList.remove('hidden');
+    document.getElementById('img-preview-wrap').style.display = 'none';
     document.getElementById('modal-title').textContent = prodId ? 'Editar Producto' : 'Nuevo Producto';
+
+    // Listener para previsualizar imagen al escribir URL
+    const imgInput = document.getElementById('prod-imagen');
+    imgInput.oninput = function() {
+        const url = this.value.trim();
+        if (url) {
+            document.getElementById('img-preview').src = url;
+            document.getElementById('img-preview-wrap').style.display = 'block';
+        } else {
+            document.getElementById('img-preview-wrap').style.display = 'none';
+        }
+    };
 
     if (prodId) {
         try {
             const snap = await window.fsGetDoc(window.fsDoc(window.db, 'productos', prodId));
             if (snap.exists()) {
                 const d = snap.data();
-                document.getElementById('prod-id').value         = prodId;
-                document.getElementById('prod-nombre').value     = d.nombre     || '';
-                document.getElementById('prod-desc').value       = d.descripcion || '';
-                document.getElementById('prod-precio').value     = d.precio      || '';
-                document.getElementById('prod-badge').value      = d.badge       || '';
-                document.getElementById('prod-activo').value     = String(d.activo !== false);
-                document.getElementById('prod-img-url').value    = d.imagen      || '';
+                document.getElementById('prod-id').value     = prodId;
+                document.getElementById('prod-nombre').value = d.nombre      || '';
+                document.getElementById('prod-desc').value   = d.descripcion || '';
+                document.getElementById('prod-precio').value = d.precio      || '';
+                document.getElementById('prod-badge').value  = d.badge       || '';
+                document.getElementById('prod-activo').value = String(d.activo !== false);
+                document.getElementById('prod-imagen').value = d.imagen      || '';
                 if (d.imagen) {
                     document.getElementById('img-preview').src = d.imagen;
-                    document.getElementById('img-preview').classList.remove('hidden');
-                    document.getElementById('img-placeholder').classList.add('hidden');
+                    document.getElementById('img-preview-wrap').style.display = 'block';
                 }
             }
         } catch (e) { console.error(e); }
@@ -249,21 +250,6 @@ window.openProductForm = async function(prodId = null) {
 window.closeProductForm = function() {
     document.getElementById('product-modal').classList.add('hidden');
     editingProductId = null;
-    imgFile = null;
-};
-
-window.previewImage = function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { toast('La imagen debe ser menor a 2MB', true); return; }
-    imgFile = file;
-    const reader = new FileReader();
-    reader.onload = ev => {
-        document.getElementById('img-preview').src = ev.target.result;
-        document.getElementById('img-preview').classList.remove('hidden');
-        document.getElementById('img-placeholder').classList.add('hidden');
-    };
-    reader.readAsDataURL(file);
 };
 
 window.saveProduct = async function(e) {
@@ -273,40 +259,26 @@ window.saveProduct = async function(e) {
     btn.disabled = true;
 
     try {
-        let imgUrl = document.getElementById('prod-img-url').value || '';
-
-        // Subir imagen si se seleccionó una nueva
-        if (imgFile) {
-            const ext      = imgFile.name.split('.').pop();
-            const filename = `productos/${Date.now()}.${ext}`;
-            const storRef  = window.stRef(window.storage, filename);
-            await window.stUpload(storRef, imgFile);
-            imgUrl = await window.stGetURL(storRef);
-        }
-
         const data = {
             nombre:      document.getElementById('prod-nombre').value.trim(),
             descripcion: document.getElementById('prod-desc').value.trim(),
             precio:      Number(document.getElementById('prod-precio').value),
             badge:       document.getElementById('prod-badge').value.trim() || null,
             activo:      document.getElementById('prod-activo').value === 'true',
-            imagen:      imgUrl,
+            imagen:      document.getElementById('prod-imagen').value.trim() || null,
             orden:       Date.now()
         };
 
         const prodId = document.getElementById('prod-id').value;
         if (prodId) {
             await window.fsUpdateDoc(window.fsDoc(window.db, 'productos', prodId), data);
-            toast('Producto actualizado');
+            toast('Producto actualizado correctamente');
         } else {
             await window.fsAddDoc(window.fsCollection(window.db, 'productos'), data);
-            toast('Producto creado');
+            toast('Producto creado correctamente');
         }
-
         closeProductForm();
-
     } catch (err) {
-        console.error(err);
         toast('Error al guardar: ' + err.message, true);
     } finally {
         btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
@@ -314,17 +286,10 @@ window.saveProduct = async function(e) {
     }
 };
 
-window.deleteProducto = async function(id, imgUrl) {
-    if (!confirm('¿Eliminar este producto?')) return;
+window.deleteProducto = async function(id) {
+    if (!confirm('¿Eliminar este producto? Esta acción no se puede deshacer.')) return;
     try {
         await window.fsDeleteDoc(window.fsDoc(window.db, 'productos', id));
-        // Intentar eliminar la imagen del storage
-        if (imgUrl) {
-            try {
-                const imgRef = window.stRef(window.storage, imgUrl);
-                await window.stDelete(imgRef);
-            } catch {}
-        }
         toast('Producto eliminado');
     } catch { toast('Error al eliminar', true); }
 };
@@ -346,7 +311,7 @@ async function loadNegocio() {
             document.getElementById('neg-bienvenida').value = d.bienvenida  || '';
             document.getElementById('neg-domicilio').value  = d.domicilio   || '';
         }
-    } catch (e) { console.log('Config no encontrada, se usarán valores por defecto'); }
+    } catch (e) { console.log('Cargando valores por defecto del negocio'); }
 }
 
 window.saveNegocio = async function(e) {
@@ -365,7 +330,7 @@ window.saveNegocio = async function(e) {
             bienvenida: document.getElementById('neg-bienvenida').value.trim(),
             domicilio:  document.getElementById('neg-domicilio').value.trim(),
         });
-        toast('Información guardada correctamente');
+        toast('Informacion del negocio guardada');
     } catch (err) {
         toast('Error al guardar: ' + err.message, true);
     } finally {
