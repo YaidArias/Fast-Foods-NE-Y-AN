@@ -447,7 +447,7 @@ function loadMyOrders() {
 }
 
 function getStatusLabel(status) {
-    return { nuevo:'Nuevo', preparando:'En Preparación', listo:'Listo', entregado:'Entregado' }[status] || status;
+    return { nuevo:'Nuevo', preparando:'En Preparación', listo:'Listo', encamino: 'En Camino', entregado:'Entregado' }[status] || status;
 }
 
 // ============================================

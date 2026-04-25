@@ -29,7 +29,13 @@ function toast(msg, isError = false) {
 }
 
 function statusLabel(s) {
-    return { nuevo:'Nuevo', preparando:'En Preparación', listo:'Listo', entregado:'Entregado' }[s] || s;
+    return {
+        nuevo:      'Nuevo',
+        preparando: 'En Preparación',
+        listo:      'Listo',
+        encamino:   'En Camino',
+        entregado:  'Entregado'
+    }[s] || s;
 }
 
 // ── Auth ──────────────────────────────────
@@ -115,7 +121,7 @@ function renderPedidos() {
                 </div>
                 <span class="badge-estado badge-${p.status}">${statusLabel(p.status)}</span>
             </div>
-            <div class="pedido-info"><i class="fas fa-user"></i> ${p.customerName} &nbsp;|&nbsp; <i class="fas fa-phone"></i> <a href="tel:${p.customerPhone}">${p.customerPhone}</a></div>
+            <div class="pedido-info"><i class="fas fa-user"></i> ${p.customerName} &nbsp;|&nbsp; <i class="fas fa-phone"></i> <a href="tel:${p.customerPhone}" style="color:var(--primary)">${p.customerPhone}</a></div>
             <div class="pedido-info"><i class="fas fa-map-marker-alt"></i> ${p.customerAddress}</div>
             ${p.notes ? `<div class="pedido-info"><i class="fas fa-sticky-note"></i> ${p.notes}</div>` : ''}
             <div class="pedido-items">
@@ -128,6 +134,7 @@ function renderPedidos() {
                     ${p.status !== 'nuevo'      ? `<button class="btn-estado btn-nuevo"      onclick="setEstado('${p.id}','nuevo')">Nuevo</button>` : ''}
                     ${p.status !== 'preparando' ? `<button class="btn-estado btn-preparando" onclick="setEstado('${p.id}','preparando')">Preparando</button>` : ''}
                     ${p.status !== 'listo'      ? `<button class="btn-estado btn-listo"      onclick="setEstado('${p.id}','listo')">Listo</button>` : ''}
+                    ${p.status !== 'encamino'   ? `<button class="btn-estado btn-encamino"   onclick="setEstado('${p.id}','encamino')">En Camino</button>` : ''}
                     ${p.status !== 'entregado'  ? `<button class="btn-estado btn-entregado"  onclick="setEstado('${p.id}','entregado')">Entregado</button>` : ''}
                     <button class="btn-estado btn-eliminar" onclick="deletePedido('${p.id}')"><i class="fas fa-trash"></i></button>
                 </div>
@@ -212,7 +219,6 @@ window.openProductForm = async function(prodId = null) {
     document.getElementById('img-preview-wrap').style.display = 'none';
     document.getElementById('modal-title').textContent = prodId ? 'Editar Producto' : 'Nuevo Producto';
 
-    // Listener para previsualizar imagen al escribir URL
     const imgInput = document.getElementById('prod-imagen');
     imgInput.oninput = function() {
         const url = this.value.trim();
@@ -311,7 +317,7 @@ async function loadNegocio() {
             document.getElementById('neg-bienvenida').value = d.bienvenida  || '';
             document.getElementById('neg-domicilio').value  = d.domicilio   || '';
         }
-    } catch (e) { console.log('Cargando valores por defecto del negocio'); }
+    } catch (e) { console.log('Cargando valores por defecto'); }
 }
 
 window.saveNegocio = async function(e) {
