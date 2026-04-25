@@ -1559,3 +1559,21 @@ body {
     background: #E0F2F1;
     color: #00695C;
 }
+
+/* ============================================
+   AGREGAR AL FINAL DE css/style.css
+   Tiempo estimado de entrega + badges hero
+   ============================================ */
+
+/* Contenedor de badges en el hero */
+.hero-badges {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Badge de tiempo estimado */
+.hero-badge-time {
+    background: rgba(243, 156, 18, 0.85) !important;
+}

@@ -318,7 +318,8 @@ async function loadNegocio() {
             document.getElementById('neg-dias').value       = d.dias        || '';
             document.getElementById('neg-horario').value    = d.horario     || '';
             document.getElementById('neg-bienvenida').value = d.bienvenida  || '';
-            document.getElementById('neg-domicilio').value  = d.domicilio   || '';
+            document.getElementById('neg-domicilio').value  = d.domicilio      || '';
+            document.getElementById('neg-tiempo').value       = d.tiempoEntrega || '';
         }
     } catch (e) { console.log('Cargando valores por defecto'); }
 }
@@ -337,7 +338,8 @@ window.saveNegocio = async function(e) {
             dias:       document.getElementById('neg-dias').value.trim(),
             horario:    document.getElementById('neg-horario').value.trim(),
             bienvenida: document.getElementById('neg-bienvenida').value.trim(),
-            domicilio:  document.getElementById('neg-domicilio').value.trim(),
+            domicilio:     document.getElementById('neg-domicilio').value.trim(),
+            tiempoEntrega: document.getElementById('neg-tiempo').value.trim(),
         });
         toast('Informacion del negocio guardada');
     } catch (err) {

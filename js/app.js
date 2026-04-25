@@ -20,12 +20,12 @@ const NEGOCIO_DEFAULT = {
     dias:       "Viernes - Sábados y Domingo",
     horario:    "05:00 PM - 11:00 PM",
     bienvenida: "¡Bienvenido! Pide tu comida favorita y te la llevamos gratis a tu casa 🛵",
-    domicilio:  "Domicilio Gratis"
+    domicilio:       "Domicilio Gratis",
+    tiempoEntrega:   "25-35"
 };
 
 let PRODUCTS = [];
 let NEGOCIO  = { ...NEGOCIO_DEFAULT };
-let NEGOCIO_ABIERTO = null; // null = no cargado, true/false = estado
 
 // ============================================
 // STATE
@@ -72,12 +72,8 @@ async function loadFirestoreData() {
         );
         snap.forEach(d => {
             if (d.id === 'negocio') NEGOCIO = { ...NEGOCIO_DEFAULT, ...d.data() };
-            if (d.id === 'estado') NEGOCIO_ABIERTO = d.data().abierto !== false;
         });
-        // Si no hay estado manual, calcular automáticamente por horario
-        if (NEGOCIO_ABIERTO === null) NEGOCIO_ABIERTO = calcularSiEstaAbierto();
         applyNegocioToUI();
-        applyEstadoNegocio();
     } catch (e) { console.log('Usando info negocio por defecto'); }
 
     // 2. Cargar productos desde Firestore
@@ -116,6 +112,14 @@ function applyNegocioToUI() {
     const heroBadge = document.querySelector('.hero-badge span');
     if (heroBadge) heroBadge.textContent = NEGOCIO.domicilio;
 
+    // Mostrar tiempo estimado de entrega
+    const heroTiempo = document.getElementById('hero-tiempo');
+    const heroTiempoText = document.getElementById('hero-tiempo-text');
+    if (heroTiempo && heroTiempoText && NEGOCIO.tiempoEntrega) {
+        heroTiempoText.textContent = NEGOCIO.tiempoEntrega + ' min';
+        heroTiempo.style.display = 'flex';
+    }
+
     // Actualizar info cards
     const infoCards = document.querySelectorAll('.info-card');
     if (infoCards.length >= 3) {
@@ -130,81 +134,6 @@ function applyNegocioToUI() {
         const telP = infoCards[2].querySelector('p');
         if (telP) telP.textContent = `${NEGOCIO.tel1}${NEGOCIO.tel2 ? ' - ' + NEGOCIO.tel2 : ''}`;
     }
-}
-
-// ============================================
-// ESTADO DEL NEGOCIO (ABIERTO / CERRADO)
-// ============================================
-function calcularSiEstaAbierto() {
-    // Días: 5=Viernes, 6=Sábado, 0=Domingo
-    const diasAtencion = NEGOCIO.diasNumeros || [5, 6, 0];
-    const horaAbre     = NEGOCIO.horaAbre    || '17:00';
-    const horaCierra   = NEGOCIO.horaCierra  || '23:00';
-
-    const ahora   = new Date();
-    const dia     = ahora.getDay();
-    const horaHoy = ahora.getHours() * 60 + ahora.getMinutes();
-
-    const [hA, mA] = horaAbre.split(':').map(Number);
-    const [hC, mC] = horaCierra.split(':').map(Number);
-    const minAbre   = hA * 60 + mA;
-    const minCierra = hC * 60 + mC;
-
-    return diasAtencion.includes(dia) && horaHoy >= minAbre && horaHoy < minCierra;
-}
-
-function applyEstadoNegocio() {
-    const hero = document.querySelector('.hero');
-    if (!hero) return;
-
-    // Remover banner anterior si existe
-    const existing = document.getElementById('banner-cerrado');
-    if (existing) existing.remove();
-
-    if (NEGOCIO_ABIERTO) {
-        // Negocio abierto — mostrar badge verde
-        const badge = document.querySelector('.hero-badge');
-        if (badge) {
-            badge.style.background = 'rgba(39,174,96,0.85)';
-            badge.innerHTML = '<i class="fas fa-circle" style="font-size:0.6rem"></i><span>Abierto ahora</span>';
-        }
-    } else {
-        // Negocio cerrado — mostrar banner y deshabilitar pedidos
-        const banner = document.createElement('div');
-        banner.id = 'banner-cerrado';
-        banner.innerHTML = `
-            <div style="
-                background: linear-gradient(135deg,#2C3E50,#1a252f);
-                color: white;
-                text-align: center;
-                padding: 16px 20px;
-                font-family: 'Poppins', sans-serif;
-            ">
-                <div style="font-size:2rem;margin-bottom:6px">🔒</div>
-                <div style="font-weight:700;font-size:1.1rem;margin-bottom:4px">Estamos Cerrados</div>
-                <div style="font-size:0.85rem;opacity:0.85">
-                    Atendemos: ${NEGOCIO.dias || 'Viernes, Sábados y Domingos'}
-                    <br>${NEGOCIO.horario || '05:00 PM - 11:00 PM'}
-                </div>
-            </div>`;
-        hero.after(banner);
-
-        // Deshabilitar botones de agregar
-        deshabilitarPedidos();
-    }
-}
-
-function deshabilitarPedidos() {
-    // Deshabilitar carrito y botones de agregar
-    const cartBtn = document.getElementById('cart-btn');
-    if (cartBtn) {
-        cartBtn.style.opacity = '0.5';
-        cartBtn.style.pointerEvents = 'none';
-    }
-    // Sobreescribir openProductModal para mostrar aviso
-    window.openProductModal = function() {
-        showToast('Estamos cerrados. Vuelve en nuestro horario de atención.');
-    };
 }
 
 // ============================================
