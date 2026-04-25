@@ -25,6 +25,7 @@ const NEGOCIO_DEFAULT = {
 
 let PRODUCTS = [];
 let NEGOCIO  = { ...NEGOCIO_DEFAULT };
+let NEGOCIO_ABIERTO = null; // null = no cargado, true/false = estado
 
 // ============================================
 // STATE
@@ -71,8 +72,12 @@ async function loadFirestoreData() {
         );
         snap.forEach(d => {
             if (d.id === 'negocio') NEGOCIO = { ...NEGOCIO_DEFAULT, ...d.data() };
+            if (d.id === 'estado') NEGOCIO_ABIERTO = d.data().abierto !== false;
         });
+        // Si no hay estado manual, calcular automáticamente por horario
+        if (NEGOCIO_ABIERTO === null) NEGOCIO_ABIERTO = calcularSiEstaAbierto();
         applyNegocioToUI();
+        applyEstadoNegocio();
     } catch (e) { console.log('Usando info negocio por defecto'); }
 
     // 2. Cargar productos desde Firestore
@@ -128,6 +133,81 @@ function applyNegocioToUI() {
 }
 
 // ============================================
+// ESTADO DEL NEGOCIO (ABIERTO / CERRADO)
+// ============================================
+function calcularSiEstaAbierto() {
+    // Días: 5=Viernes, 6=Sábado, 0=Domingo
+    const diasAtencion = NEGOCIO.diasNumeros || [5, 6, 0];
+    const horaAbre     = NEGOCIO.horaAbre    || '17:00';
+    const horaCierra   = NEGOCIO.horaCierra  || '23:00';
+
+    const ahora   = new Date();
+    const dia     = ahora.getDay();
+    const horaHoy = ahora.getHours() * 60 + ahora.getMinutes();
+
+    const [hA, mA] = horaAbre.split(':').map(Number);
+    const [hC, mC] = horaCierra.split(':').map(Number);
+    const minAbre   = hA * 60 + mA;
+    const minCierra = hC * 60 + mC;
+
+    return diasAtencion.includes(dia) && horaHoy >= minAbre && horaHoy < minCierra;
+}
+
+function applyEstadoNegocio() {
+    const hero = document.querySelector('.hero');
+    if (!hero) return;
+
+    // Remover banner anterior si existe
+    const existing = document.getElementById('banner-cerrado');
+    if (existing) existing.remove();
+
+    if (NEGOCIO_ABIERTO) {
+        // Negocio abierto — mostrar badge verde
+        const badge = document.querySelector('.hero-badge');
+        if (badge) {
+            badge.style.background = 'rgba(39,174,96,0.85)';
+            badge.innerHTML = '<i class="fas fa-circle" style="font-size:0.6rem"></i><span>Abierto ahora</span>';
+        }
+    } else {
+        // Negocio cerrado — mostrar banner y deshabilitar pedidos
+        const banner = document.createElement('div');
+        banner.id = 'banner-cerrado';
+        banner.innerHTML = `
+            <div style="
+                background: linear-gradient(135deg,#2C3E50,#1a252f);
+                color: white;
+                text-align: center;
+                padding: 16px 20px;
+                font-family: 'Poppins', sans-serif;
+            ">
+                <div style="font-size:2rem;margin-bottom:6px">🔒</div>
+                <div style="font-weight:700;font-size:1.1rem;margin-bottom:4px">Estamos Cerrados</div>
+                <div style="font-size:0.85rem;opacity:0.85">
+                    Atendemos: ${NEGOCIO.dias || 'Viernes, Sábados y Domingos'}
+                    <br>${NEGOCIO.horario || '05:00 PM - 11:00 PM'}
+                </div>
+            </div>`;
+        hero.after(banner);
+
+        // Deshabilitar botones de agregar
+        deshabilitarPedidos();
+    }
+}
+
+function deshabilitarPedidos() {
+    // Deshabilitar carrito y botones de agregar
+    const cartBtn = document.getElementById('cart-btn');
+    if (cartBtn) {
+        cartBtn.style.opacity = '0.5';
+        cartBtn.style.pointerEvents = 'none';
+    }
+    // Sobreescribir openProductModal para mostrar aviso
+    window.openProductModal = function() {
+        showToast('Estamos cerrados. Vuelve en nuestro horario de atención.');
+    };
+}
+
+// ============================================
 // SPLASH SCREEN
 // ============================================
 function initSplash() {
@@ -140,76 +220,34 @@ function initSplash() {
 }
 
 // ============================================
-// RENDER MENU — con secciones por categoría
+// RENDER MENU
 // ============================================
 function renderMenu() {
     const grid = document.getElementById('menu-grid');
-
-    // Eliminar cualquier título estático previo que pueda estar en el HTML
-    const menuSection = grid.closest('.menu-section');
-    if (menuSection) {
-        const staticTitle = menuSection.querySelector('h3.section-title');
-        if (staticTitle) staticTitle.remove();
-    }
-
     if (!PRODUCTS.length) {
-        grid.innerHTML = '<div style="text-align:center;padding:40px;color:#999"><i class="fas fa-spinner fa-spin" style="font-size:2rem"></i><p style="margin-top:12px">Cargando menú...</p></div>';
+        grid.innerHTML = `<div style="text-align:center;padding:40px;color:#999"><i class="fas fa-spinner fa-spin" style="font-size:2rem"></i><p style="margin-top:12px">Cargando menú...</p></div>`;
         return;
     }
-
-    // Agrupar productos por categoría
-    const categorias = {};
-    PRODUCTS.forEach(product => {
-        const cat = product.categoria || 'menu';
-        if (!categorias[cat]) categorias[cat] = [];
-        categorias[cat].push(product);
-    });
-
-    // Config de cada categoría
-    const catConfig = {
-        menu:    { titulo: 'Nuestro Menú', icono: 'fa-utensils'    },
-        bebidas: { titulo: 'Bebidas',       icono: 'fa-glass-water' },
-        otros:   { titulo: 'Otros',         icono: 'fa-star'        }
-    };
-
-    // Orden: menu primero, bebidas segundo, resto después
-    // filter() evita duplicados — solo mostrar categorías que tienen productos
-    const orden = [...new Set(['menu', 'bebidas', ...Object.keys(categorias)])];
-
-    const productCard = (product) => {
-        const nombre = product.nombre || product.name;
-        const precio = product.precio || product.price;
-        const desc   = product.descripcion || product.description;
-        const icon   = product.icon || 'fa-hamburger';
-        const img    = product.imagen || null;
-        const badge  = product.badge || null;
-        const imgStyle = img ? 'background-image:url(' + img + ');background-size:cover;background-position:center' : '';
-        const iconHTML = !img ? '<i class="fas ' + icon + '"></i>' : '';
-        const badgeHTML = badge ? '<span class="product-badge">' + badge + '</span>' : '';
-        return `<div class="product-card" onclick="openProductModal('${product.id}')">`
-            + `<div class="product-image" style="${imgStyle}">${iconHTML}${badgeHTML}</div>`
-            + '<div class="product-info">'
-            + `<h4 class="product-name">${nombre}</h4>`
-            + `<p class="product-description">${desc}</p>`
-            + '<div class="product-footer">'
-            + `<span class="product-price">${formatPrice(precio)}</span>`
-            + `<button class="btn-add" onclick="event.stopPropagation(); openProductModal('${product.id}')">`
-            + '<i class="fas fa-plus"></i> Agregar</button>'
-            + '</div></div></div>';
-    };
-
-    let html = '';
-    orden.forEach(cat => {
-        if (!categorias[cat] || categorias[cat].length === 0) return;
-        const cfg = catConfig[cat] || { titulo: cat, icono: 'fa-star' };
-        html += '<div class="menu-section-header" style="grid-column:1/-1;margin-top:8px">'
-            + '<h3 class="section-title"><i class="fas ' + cfg.icono + '"></i> ' + cfg.titulo + '</h3>'
-            + '</div>'
-            + categorias[cat].map(productCard).join('');
-    });
-
-    grid.innerHTML = html;
+    grid.innerHTML = PRODUCTS.map(product => `
+        <div class="product-card" onclick="openProductModal('${product.id}')">
+            <div class="product-image" style="${product.imagen ? `background-image:url('${product.imagen}');background-size:cover;background-position:center` : ''}">
+                ${!product.imagen ? `<i class="fas ${product.icon || 'fa-hamburger'}"></i>` : ''}
+                ${product.badge ? `<span class="product-badge">${product.badge}</span>` : ''}
+            </div>
+            <div class="product-info">
+                <h4 class="product-name">${product.nombre || product.name}</h4>
+                <p class="product-description">${product.descripcion || product.description}</p>
+                <div class="product-footer">
+                    <span class="product-price">${formatPrice(product.precio || product.price)}</span>
+                    <button class="btn-add" onclick="event.stopPropagation(); openProductModal('${product.id}')">
+                        <i class="fas fa-plus"></i> Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
 }
+
 // ============================================
 // PRODUCT MODAL
 // ============================================

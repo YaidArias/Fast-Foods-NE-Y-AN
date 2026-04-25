@@ -89,6 +89,7 @@ window.showSection = function(name) {
     document.querySelector(`.nav-item[onclick*="${name}"]`).classList.add('active');
     if (name === 'pedidos')   initPedidos();
     if (name === 'productos') initProductos();
+    if (name === 'negocio')   cargarEstadoNegocio();
 };
 
 // ════════════════════════════════════════════
@@ -344,5 +345,53 @@ window.saveNegocio = async function(e) {
     } finally {
         btn.innerHTML = '<i class="fas fa-save"></i> Guardar cambios';
         btn.disabled = false;
+    }
+};
+
+// ════════════════════════════════════════════
+// ESTADO NEGOCIO (ABIERTO / CERRADO)
+// ════════════════════════════════════════════
+async function cargarEstadoNegocio() {
+    try {
+        const snap = await window.fsGetDoc(window.fsDoc(window.db, 'config', 'estado'));
+        const card = document.getElementById('estado-negocio-card');
+        const subtitulo = document.getElementById('estado-subtitulo');
+        const btnAbrir  = document.getElementById('btn-abrir');
+        const btnCerrar = document.getElementById('btn-cerrar');
+
+        if (snap.exists() && snap.data().abierto === false) {
+            // CERRADO manualmente
+            card.className = 'estado-negocio-card cerrado';
+            subtitulo.innerHTML = '<i class="fas fa-circle"></i> Cerrado manualmente';
+            btnAbrir.style.display  = 'flex';
+            btnCerrar.style.display = 'none';
+        } else if (snap.exists() && snap.data().abierto === true) {
+            // ABIERTO manualmente
+            card.className = 'estado-negocio-card abierto';
+            subtitulo.innerHTML = '<i class="fas fa-circle"></i> Abierto manualmente';
+            btnAbrir.style.display  = 'none';
+            btnCerrar.style.display = 'flex';
+        } else {
+            // Modo automático por horario
+            card.className = 'estado-negocio-card automatico';
+            subtitulo.innerHTML = '<i class="fas fa-clock"></i> Automático (por horario)';
+            btnAbrir.style.display  = 'flex';
+            btnCerrar.style.display = 'flex';
+        }
+    } catch (e) {
+        console.log('Error cargando estado negocio:', e);
+    }
+}
+
+window.toggleEstadoNegocio = async function(abierto) {
+    try {
+        await window.fsSetDoc(window.fsDoc(window.db, 'config', 'estado'), {
+            abierto: abierto,
+            updatedAt: new Date()
+        });
+        toast(abierto ? '✅ Negocio abierto' : '🔒 Negocio cerrado');
+        cargarEstadoNegocio();
+    } catch (err) {
+        toast('Error al cambiar estado: ' + err.message, true);
     }
 };
