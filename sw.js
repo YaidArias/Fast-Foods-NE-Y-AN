@@ -4,7 +4,7 @@
 // El navegador siempre busca la versión más reciente
 // ============================================
 
-const CACHE_NAME    = 'nean-app-v4';
+const CACHE_NAME    = 'nean-app-v5';
 const OFFLINE_PAGE  = '/index.html';
 
 // Solo estos assets se precargan (los más críticos)
@@ -49,6 +49,9 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     const isExternal = !url.origin.includes(self.location.origin);
     if (isExternal) return;
+
+    // Nunca cachear admin.html — siempre directo a la red
+    if (url.pathname === '/admin.html' || url.pathname === '/admin') return;
 
     event.respondWith(
         fetch(event.request)
