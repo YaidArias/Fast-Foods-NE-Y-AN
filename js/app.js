@@ -20,8 +20,7 @@ const NEGOCIO_DEFAULT = {
     dias:       "Viernes - Sábados y Domingo",
     horario:    "05:00 PM - 11:00 PM",
     bienvenida: "¡Bienvenido! Pide tu comida favorita y te la llevamos gratis a tu casa 🛵",
-    domicilio:       "Domicilio Gratis",
-    tiempoEntrega:   "25-35"
+    domicilio:  "Domicilio Gratis"
 };
 
 let PRODUCTS = [];
@@ -111,14 +110,6 @@ function applyNegocioToUI() {
     // Actualizar badge domicilio
     const heroBadge = document.querySelector('.hero-badge span');
     if (heroBadge) heroBadge.textContent = NEGOCIO.domicilio;
-
-    // Mostrar tiempo estimado de entrega
-    const heroTiempo = document.getElementById('hero-tiempo');
-    const heroTiempoText = document.getElementById('hero-tiempo-text');
-    if (heroTiempo && heroTiempoText && NEGOCIO.tiempoEntrega) {
-        heroTiempoText.textContent = NEGOCIO.tiempoEntrega + ' min';
-        heroTiempo.style.display = 'flex';
-    }
 
     // Actualizar info cards
     const infoCards = document.querySelectorAll('.info-card');
@@ -361,7 +352,7 @@ async function sendOrder(event) {
         myOrders.push(orderId);
         localStorage.setItem('myOrders', JSON.stringify(myOrders));
         closeCheckout();
-        showSuccessModal(orderId);
+        showSuccessModal(orderData);
         cart = [];
         updateCartBadge();
         document.getElementById('checkout-form').reset();
@@ -397,8 +388,37 @@ function sendNtfyNotification(orderData) {
     .catch(err => console.log('Error ntfy:', err.message));
 }
 
-function showSuccessModal(orderId) {
+function showSuccessModal(orderData) {
+    const orderId = orderData.orderId || orderData;
     document.getElementById('success-order-id').textContent = 'Pedido: ' + orderId;
+
+    // Generar mensaje de WhatsApp
+    const itemsTexto = (orderData.items || [])
+        .map(i => `  - ${i.quantity}x ${i.name}`)
+        .join('%0A');
+    const total = orderData.total
+        ? '$' + Number(orderData.total).toLocaleString('es-CO')
+        : '';
+    const notas = orderData.notes ? `%0ANotas: ${orderData.notes}` : '';
+    const mensaje =
+        `Hola! Mi pedido es:%0A%0A` +
+        `*Orden:* ${orderId}%0A` +
+        `*Productos:*%0A${itemsTexto}%0A` +
+        `*Total:* ${total}%0A` +
+        `*Pago:* ${orderData.paymentMethod || ''}%0A` +
+        `*Dirección:* ${orderData.customerAddress || ''}` +
+        notas;
+
+    const tel = (NEGOCIO.tel1 || '3156848558').replace(/\D/g, '');
+    const waUrl = `https://wa.me/57${tel}?text=${mensaje}`;
+
+    // Actualizar botón de WhatsApp
+    const btnWa = document.getElementById('btn-share-whatsapp');
+    if (btnWa) {
+        btnWa.href = waUrl;
+        btnWa.style.display = 'flex';
+    }
+
     document.getElementById('success-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }

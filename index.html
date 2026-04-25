@@ -266,9 +266,14 @@
             <p>Tu pedido ha sido recibido correctamente.</p>
             <p class="success-order-id" id="success-order-id"></p>
             <p class="success-note">Puedes ver el estado de tu pedido en "Mis Pedidos"</p>
-            <button class="btn-primary" onclick="closeSuccess()">
-                <i class="fas fa-utensils"></i> Seguir Comprando
-            </button>
+            <div class="success-actions">
+                <button class="btn-primary" onclick="closeSuccess()">
+                    <i class="fas fa-utensils"></i> Seguir Comprando
+                </button>
+                <a id="btn-share-whatsapp" href="#" target="_blank" class="btn-whatsapp" style="display:none">
+                    <i class="fab fa-whatsapp"></i> Compartir por WhatsApp
+                </a>
+            </div>
         </div>
     </div>
 

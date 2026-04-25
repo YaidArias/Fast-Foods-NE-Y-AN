@@ -1577,3 +1577,44 @@ body {
 .hero-badge-time {
     background: rgba(243, 156, 18, 0.85) !important;
 }
+
+/* ============================================
+   AGREGAR AL FINAL DE css/style.css
+   Botón compartir por WhatsApp
+   ============================================ */
+
+.success-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    align-items: center;
+}
+
+.btn-whatsapp {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #25D366;
+    color: white;
+    text-decoration: none;
+    padding: 14px 28px;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: 'Poppins', sans-serif;
+    width: 100%;
+    max-width: 280px;
+    transition: opacity 0.2s, transform 0.2s;
+    box-shadow: 0 4px 15px rgba(37,211,102,0.4);
+}
+
+.btn-whatsapp:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn-whatsapp i {
+    font-size: 1.2rem;
+}
