@@ -280,16 +280,15 @@ async function sendOrder(event) {
         items: cart.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
         total: total,
         status: 'nuevo',
-        createdAt: new Date(),
-        notified: false
+        createdAt: new Date()
     };
     
     try {
         const ordersRef = window.firebaseCollection(window.db, 'orders');
         await window.firebaseAddDoc(ordersRef, orderData);
         
-        // Notificación ntfy
-        await sendNtfyNotification(orderData);
+        // Enviar notificación ntfy
+        sendNtfyNotification(orderData);
         
         // Guardar en localStorage
         let myOrders = JSON.parse(localStorage.getItem('myOrders') || '[]');
@@ -309,62 +308,48 @@ async function sendOrder(event) {
     }
 }
 
-async function sendNtfyNotification(orderData) {
+function sendNtfyNotification(orderData) {
     const ntfyTopic = 'nean-pedidos-sq-2026';
     
     const message = 
-        `📋 Orden: ${orderData.orderId}\n` +
-        `👤 Cliente: ${orderData.customerName}\n` +
-        `📱 Tel: ${orderData.customerPhone}\n` +
-        `📍 Dir: ${orderData.customerAddress}\n` +
-        `💳 Pago: ${orderData.paymentMethod}\n\n` +
-        `🛒 PRODUCTOS:\n` +
-        orderData.items.map(i => `• ${i.quantity}x ${i.name} - $${i.price.toLocaleString('es-CO')}`).join('\n') +
-        `\n\n💰 TOTAL: $${orderData.total.toLocaleString('es-CO')}\n` +
-        `${orderData.notes ? '📝 Notas: ' + orderData.notes + '\n' : ''}`;
+        '🔔 NUEVO PEDIDO NE&AN\n' +
+        '📋 Orden: ' + orderData.orderId + '\n' +
+        '👤 Cliente: ' + orderData.customerName + '\n' +
+        '📱 Tel: ' + orderData.customerPhone + '\n' +
+        '📍 Dir: ' + orderData.customerAddress + '\n' +
+        '💳 Pago: ' + orderData.paymentMethod + '\n\n' +
+        '🛒 PRODUCTOS:\n' +
+        orderData.items.map(i => '• ' + i.quantity + 'x ' + i.name + ' - $' + i.price.toLocaleString('es-CO')).join('\n') +
+        '\n\n💰 TOTAL: $' + orderData.total.toLocaleString('es-CO') + '\n' +
+        (orderData.notes ? '📝 Notas: ' + orderData.notes + '\n' : '');
     
-    try {
-        // Crear formulario invisible y enviarlo
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `https://ntfy.sh/${ntfyTopic}`;
-        form.target = '_blank'; // Abre en nueva pestaña (pero la cerramos rápido)
-        form.style.display = 'none';
-        
-        // Campo del mensaje
-        const msgInput = document.createElement('input');
-        msgInput.name = '';
-        msgInput.value = message;
-        form.appendChild(msgInput);
-        
-        document.body.appendChild(form);
-        
-        // Enviar usando fetch con no-cors (funciona desde cualquier sitio)
-        fetch(`https://ntfy.sh/${ntfyTopic}`, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: message,
-            headers: {
-                'Title': '🔔 Nuevo Pedido NE&AN',
-                'Priority': 'high',
-                'Tags': 'shopping_cart,fire'
-            }
-        }).then(() => {
-            console.log('✅ Notificación enviada (no-cors)');
-        }).catch(() => {
-            // Si fetch falla, usar el formulario como backup
-            form.submit();
-            console.log('✅ Notificación enviada por formulario');
-        });
-        
-        // Limpiar
-        setTimeout(() => {
-            if (form.parentNode) document.body.removeChild(form);
-        }, 5000);
-        
-    } catch (e) {
-        console.log('❌ Error:', e);
-    }
+    // Usar no-cors para evitar restricciones
+    fetch('https://ntfy.sh/' + ntfyTopic, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: message,
+        headers: {
+            'Title': '🔔 Nuevo Pedido NE&AN',
+            'Priority': 'high',
+            'Tags': 'shopping_cart,fire'
+        }
+    }).then(() => {
+        console.log('Notificación enviada');
+    }).catch((err) => {
+        console.log('Error notificación:', err);
+    });
+}
+
+function showSuccessModal(orderId) {
+    const modal = document.getElementById('success-modal');
+    document.getElementById('success-order-id').textContent = 'Pedido: ' + orderId;
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSuccess() {
+    document.getElementById('success-modal').classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 // ============================================
@@ -644,6 +629,7 @@ if ('serviceWorker' in navigator) {
     });
 }
 
+
 // ============================================
 // EXPONER FUNCIONES GLOBALMENTE (requerido por type="module")
 // ============================================
@@ -669,6 +655,7 @@ window.refreshOrders = refreshOrders;
 window.filterOrders = filterOrders;
 window.updateOrderStatus = updateOrderStatus;
 window.deleteOrder = deleteOrder;
+
 // ============================================
 // INIT
 // ============================================
