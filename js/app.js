@@ -261,25 +261,24 @@ function closeCheckout() {
 async function sendOrder(event) {
     event.preventDefault();
     
-    const name = document.getElementById('customer-name').value.trim();
-    const phone = document.getElementById('customer-phone').value.trim();
+    const name    = document.getElementById('customer-name').value.trim();
+    const phone   = document.getElementById('customer-phone').value.trim();
     const address = document.getElementById('customer-address').value.trim();
-    const notes = document.getElementById('customer-notes').value.trim();
+    const notes   = document.getElementById('customer-notes').value.trim();
     const payment = document.querySelector('input[name="payment"]:checked').value;
-    
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total   = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const orderId = generateOrderId();
     
     const orderData = {
-        orderId: orderId,
-        customerName: name,
-        customerPhone: phone,
+        orderId,
+        customerName:    name,
+        customerPhone:   phone,
         customerAddress: address,
-        notes: notes,
-        paymentMethod: payment,
+        notes,
+        paymentMethod:   payment,
         items: cart.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
-        total: total,
-        status: 'nuevo',
+        total,
+        status:    'nuevo',
         createdAt: new Date()
     };
     
@@ -287,17 +286,15 @@ async function sendOrder(event) {
         const ordersRef = window.firebaseCollection(window.db, 'orders');
         await window.firebaseAddDoc(ordersRef, orderData);
         
-        // Notificación ntfy
-        await sendNtfyNotification(orderData);
+        // Notificacion ntfy (sin await para no bloquear el flujo)
+        sendNtfyNotification(orderData);
         
-        // Guardar en localStorage para "Mis Pedidos"
         let myOrders = JSON.parse(localStorage.getItem('myOrders') || '[]');
         myOrders.push(orderId);
         localStorage.setItem('myOrders', JSON.stringify(myOrders));
         
         closeCheckout();
         showSuccessModal(orderId);
-        
         cart = [];
         updateCartBadge();
         document.getElementById('checkout-form').reset();
@@ -309,63 +306,48 @@ async function sendOrder(event) {
 }
 
 // ============================================
-// NTFY NOTIFICACIÓN - CORREGIDO
+// NTFY - SIN EMOJIS EN EL BODY (fix error ByteString)
 // ============================================
-async function sendNtfyNotification(orderData) {
+function sendNtfyNotification(orderData) {
     const ntfyTopic = 'nean-pedidos-sq-2026';
 
     const itemsTexto = orderData.items
-        .map(i => `• ${i.quantity}x ${i.name} - $${i.price.toLocaleString('es-CO')}`)
+        .map(i => `- ${i.quantity}x ${i.name} ($${i.price.toLocaleString('es-CO')})`)
         .join('\n');
 
+    // Sin emojis en el body — van como Tags aparte
     const mensaje =
-        `🔔 NUEVO PEDIDO NE&AN\n` +
-        `📋 Orden: ${orderData.orderId}\n` +
-        `👤 Cliente: ${orderData.customerName}\n` +
-        `📱 Tel: ${orderData.customerPhone}\n` +
-        `📍 Dir: ${orderData.customerAddress}\n` +
-        `💳 Pago: ${orderData.paymentMethod}\n\n` +
-        `🛒 PRODUCTOS:\n${itemsTexto}\n\n` +
-        `💰 TOTAL: $${orderData.total.toLocaleString('es-CO')}` +
-        (orderData.notes ? `\n📝 Notas: ${orderData.notes}` : '');
+        `NUEVO PEDIDO NE&AN\n` +
+        `Orden: ${orderData.orderId}\n` +
+        `Cliente: ${orderData.customerName}\n` +
+        `Tel: ${orderData.customerPhone}\n` +
+        `Direccion: ${orderData.customerAddress}\n` +
+        `Pago: ${orderData.paymentMethod}\n\n` +
+        `PRODUCTOS:\n${itemsTexto}\n\n` +
+        `TOTAL: $${orderData.total.toLocaleString('es-CO')}` +
+        (orderData.notes ? `\nNotas: ${orderData.notes}` : '');
 
-    // Intentos en orden: primero sin cors, luego con image proxy
-    const intentos = [
-        // Intento 1: fetch directo con cors
-        () => fetch(`https://ntfy.sh/${ntfyTopic}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'text/plain;charset=UTF-8',
-                'Title': '🔔 Nuevo Pedido NE&AN',
-                'Priority': 'high',
-                'Tags': 'shopping_cart,fire'
-            },
-            body: mensaje
-        }),
-        // Intento 2: fetch con no-cors (fallback)
-        () => fetch(`https://ntfy.sh/${ntfyTopic}`, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: {
-                'Title': '🔔 Nuevo Pedido NE&AN',
-                'Priority': 'high',
-                'Tags': 'shopping_cart,fire'
-            },
-            body: mensaje
-        })
-    ];
-
-    for (const intento of intentos) {
-        try {
-            await intento();
-            console.log('✅ Notificación ntfy enviada');
-            return;
-        } catch (err) {
-            console.log('⚠️ Intento fallido, probando siguiente...', err.message);
+    // Codificar el mensaje a Latin-1 seguro usando encodeURIComponent
+    fetch(`https://ntfy.sh/${ntfyTopic}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'text/plain',
+            'Title':    'Nuevo Pedido NE&AN',
+            'Priority': 'high',
+            'Tags':     'shopping_cart,fire,bell'
+        },
+        body: mensaje
+    })
+    .then(res => {
+        if (res.ok) {
+            console.log('Notificacion ntfy enviada correctamente');
+        } else {
+            console.log('ntfy respondio con error:', res.status);
         }
-    }
-
-    console.log('❌ No se pudo enviar notificación ntfy');
+    })
+    .catch(err => {
+        console.log('Error enviando ntfy:', err.message);
+    });
 }
 
 function showSuccessModal(orderId) {
@@ -386,14 +368,12 @@ function closeSuccess() {
 function showMyOrders() {
     const modal = document.getElementById('my-orders-modal');
     const ordersList = document.getElementById('orders-list');
-    
     ordersList.innerHTML = `
         <div class="orders-empty">
             <i class="fas fa-spinner fa-spin"></i>
             <p>Cargando pedidos...</p>
         </div>
     `;
-    
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     loadMyOrders();
@@ -402,10 +382,7 @@ function showMyOrders() {
 function closeMyOrders() {
     document.getElementById('my-orders-modal').classList.remove('active');
     document.body.style.overflow = '';
-    if (myOrdersUnsubscribe) {
-        myOrdersUnsubscribe();
-        myOrdersUnsubscribe = null;
-    }
+    if (myOrdersUnsubscribe) { myOrdersUnsubscribe(); myOrdersUnsubscribe = null; }
 }
 
 function loadMyOrders() {
@@ -413,12 +390,7 @@ function loadMyOrders() {
     const ordersList = document.getElementById('orders-list');
     
     if (myOrderIds.length === 0) {
-        ordersList.innerHTML = `
-            <div class="orders-empty">
-                <i class="fas fa-receipt"></i>
-                <p>No tienes pedidos aún</p>
-            </div>
-        `;
+        ordersList.innerHTML = `<div class="orders-empty"><i class="fas fa-receipt"></i><p>No tienes pedidos aún</p></div>`;
         return;
     }
     
@@ -429,18 +401,11 @@ function loadMyOrders() {
         const orders = [];
         snapshot.forEach(doc => {
             const data = doc.data();
-            if (myOrderIds.includes(data.orderId)) {
-                orders.push({ id: doc.id, ...data });
-            }
+            if (myOrderIds.includes(data.orderId)) orders.push({ id: doc.id, ...data });
         });
         
         if (orders.length === 0) {
-            ordersList.innerHTML = `
-                <div class="orders-empty">
-                    <i class="fas fa-receipt"></i>
-                    <p>No tienes pedidos aún</p>
-                </div>
-            `;
+            ordersList.innerHTML = `<div class="orders-empty"><i class="fas fa-receipt"></i><p>No tienes pedidos aún</p></div>`;
             return;
         }
         
@@ -450,9 +415,7 @@ function loadMyOrders() {
                     <span class="order-id">${order.orderId}</span>
                     <span class="order-status status-${order.status}">${getStatusLabel(order.status)}</span>
                 </div>
-                <div class="order-items">
-                    ${order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
-                </div>
+                <div class="order-items">${order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}</div>
                 <div class="order-total">${formatPrice(order.total)}</div>
                 <div class="order-meta">
                     <span><i class="fas fa-calendar"></i> ${formatDate(order.createdAt)}</span>
@@ -486,12 +449,11 @@ async function adminLogin(event) {
     const btn = event.target.querySelector('button[type="submit"]');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ingresando...';
     btn.disabled = true;
-
-    const email = document.getElementById('admin-email').value;
-    const password = document.getElementById('admin-password').value;
-    
     try {
-        await window.firebaseSignIn(window.auth, email, password);
+        await window.firebaseSignIn(window.auth,
+            document.getElementById('admin-email').value,
+            document.getElementById('admin-password').value
+        );
         await activarNotificacionesAdmin();
         closeAdminLogin();
         showAdminPanel();
@@ -511,47 +473,31 @@ function showAdminPanel() {
 function closeAdminPanel() {
     document.getElementById('admin-panel-modal').classList.remove('active');
     document.body.style.overflow = '';
-    if (ordersUnsubscribe) {
-        ordersUnsubscribe();
-        ordersUnsubscribe = null;
-    }
+    if (ordersUnsubscribe) { ordersUnsubscribe(); ordersUnsubscribe = null; }
 }
 
 function loadAdminOrders() {
     const adminOrders = document.getElementById('admin-orders');
-    adminOrders.innerHTML = `
-        <div class="orders-empty">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Cargando pedidos...</p>
-        </div>
-    `;
+    adminOrders.innerHTML = `<div class="orders-empty"><i class="fas fa-spinner fa-spin"></i><p>Cargando pedidos...</p></div>`;
     
-    const ordersRef = window.firebaseCollection(window.db, 'orders');
-    const q = window.firebaseQuery(ordersRef, window.firebaseOrderBy('createdAt', 'desc'));
+    const q = window.firebaseQuery(
+        window.firebaseCollection(window.db, 'orders'),
+        window.firebaseOrderBy('createdAt', 'desc')
+    );
     
     ordersUnsubscribe = window.firebaseOnSnapshot(q, (snapshot) => {
         const orders = [];
-        snapshot.forEach(doc => {
-            orders.push({ id: doc.id, ...doc.data() });
-        });
+        snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
         renderAdminOrders(orders);
     });
 }
 
 function renderAdminOrders(orders) {
     const adminOrders = document.getElementById('admin-orders');
-    
-    const filteredOrders = currentFilter === 'all' 
-        ? orders 
-        : orders.filter(o => o.status === currentFilter);
+    const filteredOrders = currentFilter === 'all' ? orders : orders.filter(o => o.status === currentFilter);
     
     if (filteredOrders.length === 0) {
-        adminOrders.innerHTML = `
-            <div class="orders-empty">
-                <i class="fas fa-inbox"></i>
-                <p>No hay pedidos ${currentFilter !== 'all' ? 'en este estado' : ''}</p>
-            </div>
-        `;
+        adminOrders.innerHTML = `<div class="orders-empty"><i class="fas fa-inbox"></i><p>No hay pedidos ${currentFilter !== 'all' ? 'en este estado' : ''}</p></div>`;
         return;
     }
     
@@ -577,10 +523,10 @@ function renderAdminOrders(orders) {
                 <span style="font-size:0.8rem;color:var(--gray-600)">${formatDate(order.createdAt)}</span>
             </div>
             <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-                ${order.status !== 'nuevo' ? `<button class="btn-status btn-status-nuevo" onclick="updateOrderStatus('${order.id}', 'nuevo')">Nuevo</button>` : ''}
+                ${order.status !== 'nuevo'      ? `<button class="btn-status btn-status-nuevo"      onclick="updateOrderStatus('${order.id}', 'nuevo')">Nuevo</button>` : ''}
                 ${order.status !== 'preparando' ? `<button class="btn-status btn-status-preparando" onclick="updateOrderStatus('${order.id}', 'preparando')">Preparando</button>` : ''}
-                ${order.status !== 'listo' ? `<button class="btn-status btn-status-listo" onclick="updateOrderStatus('${order.id}', 'listo')">Listo</button>` : ''}
-                ${order.status !== 'entregado' ? `<button class="btn-status btn-status-entregado" onclick="updateOrderStatus('${order.id}', 'entregado')">Entregado</button>` : ''}
+                ${order.status !== 'listo'      ? `<button class="btn-status btn-status-listo"      onclick="updateOrderStatus('${order.id}', 'listo')">Listo</button>` : ''}
+                ${order.status !== 'entregado'  ? `<button class="btn-status btn-status-entregado"  onclick="updateOrderStatus('${order.id}', 'entregado')">Entregado</button>` : ''}
                 <button class="btn-status btn-delete" onclick="deleteOrder('${order.id}')"><i class="fas fa-trash"></i></button>
             </div>
         </div>
@@ -589,16 +535,13 @@ function renderAdminOrders(orders) {
 
 function filterOrders(filter) {
     currentFilter = filter;
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.filter === filter);
-    });
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === filter));
     loadAdminOrders();
 }
 
 async function updateOrderStatus(orderId, status) {
     try {
-        const orderRef = window.firebaseDoc(window.db, 'orders', orderId);
-        await window.firebaseUpdateDoc(orderRef, { status: status });
+        await window.firebaseUpdateDoc(window.firebaseDoc(window.db, 'orders', orderId), { status });
         showToast(`Pedido marcado como: ${getStatusLabel(status)}`);
     } catch (error) {
         showToast('Error al actualizar estado');
@@ -608,8 +551,7 @@ async function updateOrderStatus(orderId, status) {
 async function deleteOrder(orderId) {
     if (!confirm('¿Eliminar este pedido?')) return;
     try {
-        const orderRef = window.firebaseDoc(window.db, 'orders', orderId);
-        await window.firebaseDeleteDoc(orderRef);
+        await window.firebaseDeleteDoc(window.firebaseDoc(window.db, 'orders', orderId));
         showToast('Pedido eliminado');
     } catch (error) {
         showToast('Error al eliminar');
@@ -626,9 +568,7 @@ function refreshOrders() {
 // ============================================
 window.firebaseOnAuthStateChanged(window.auth, (user) => {
     const adminAccess = document.getElementById('admin-access');
-    if (adminAccess) {
-        adminAccess.style.display = 'block';
-    }
+    if (adminAccess) adminAccess.style.display = 'block';
 });
 
 // ============================================
@@ -642,21 +582,21 @@ async function activarNotificacionesAdmin() {
     if (!('Notification' in window)) return;
     const permiso = await Notification.requestPermission();
     if (permiso !== 'granted') {
-        showToast('⚠️ Activa las notificaciones del navegador');
+        showToast('Activa las notificaciones del navegador');
         return;
     }
     notificacionesActivas = true;
     iniciarListenerNuevosPedidos();
-    showToast('🔔 Notificaciones activadas');
+    showToast('Notificaciones activadas');
 }
 
 function iniciarListenerNuevosPedidos() {
     if (adminPushListener) return;
-
-    const ordersRef = window.firebaseCollection(window.db, 'orders');
-    const q = window.firebaseQuery(ordersRef, window.firebaseOrderBy('createdAt', 'desc'));
+    const q = window.firebaseQuery(
+        window.firebaseCollection(window.db, 'orders'),
+        window.firebaseOrderBy('createdAt', 'desc')
+    );
     let primeraVez = true;
-
     adminPushListener = window.firebaseOnSnapshot(q, (snapshot) => {
         if (primeraVez) {
             snapshot.forEach(doc => pedidosYaVistos.add(doc.id));
@@ -683,36 +623,20 @@ async function mostrarNotificacionPedido(pedido) {
         items:        pedido.items        || [],
         total:        pedido.total        || 0
     };
-
     if ('serviceWorker' in navigator) {
         try {
             const swReg = await navigator.serviceWorker.ready;
-            if (swReg.active) {
-                swReg.active.postMessage({ type: 'NUEVO_PEDIDO', payload });
-                return;
-            }
+            if (swReg.active) { swReg.active.postMessage({ type: 'NUEVO_PEDIDO', payload }); return; }
         } catch (e) {}
     }
-
     if (Notification.permission === 'granted') {
-        const itemsResumen = payload.items.length
-            ? payload.items.map(i => `${i.quantity}x ${i.name}`).join(', ')
-            : 'Ver detalles';
-        new Notification(`🍔 Nuevo Pedido - ${payload.orderId}`, {
-            body: `${payload.customerName} pidió: ${itemsResumen}\nTotal: $${Number(payload.total).toLocaleString('es-CO')}`,
+        const itemsResumen = payload.items.length ? payload.items.map(i => `${i.quantity}x ${i.name}`).join(', ') : 'Ver detalles';
+        new Notification(`Nuevo Pedido - ${payload.orderId}`, {
+            body: `${payload.customerName} pidio: ${itemsResumen}. Total: $${Number(payload.total).toLocaleString('es-CO')}`,
             icon: '/images/icon-192.png',
             requireInteraction: true
         });
     }
-}
-
-function detenerNotificacionesAdmin() {
-    if (adminPushListener) {
-        adminPushListener();
-        adminPushListener = null;
-    }
-    notificacionesActivas = false;
-    pedidosYaVistos.clear();
 }
 
 // ============================================
@@ -720,11 +644,11 @@ function detenerNotificacionesAdmin() {
 // ============================================
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('modal') && e.target.classList.contains('active')) {
-        if (e.target.id === 'product-modal') closeModal();
-        if (e.target.id === 'cart-modal') closeCart();
-        if (e.target.id === 'checkout-modal') closeCheckout();
-        if (e.target.id === 'success-modal') closeSuccess();
-        if (e.target.id === 'my-orders-modal') closeMyOrders();
+        if (e.target.id === 'product-modal')    closeModal();
+        if (e.target.id === 'cart-modal')       closeCart();
+        if (e.target.id === 'checkout-modal')   closeCheckout();
+        if (e.target.id === 'success-modal')    closeSuccess();
+        if (e.target.id === 'my-orders-modal')  closeMyOrders();
         if (e.target.id === 'admin-login-modal') closeAdminLogin();
         if (e.target.id === 'admin-panel-modal') closeAdminPanel();
     }
@@ -743,8 +667,8 @@ document.addEventListener('keydown', function(e) {
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('SW registrado'))
-            .catch(err => console.log('SW falló:', err));
+            .then(() => console.log('SW registrado'))
+            .catch(err => console.log('SW fallo:', err));
     });
 }
 
@@ -774,7 +698,6 @@ window.filterOrders               = filterOrders;
 window.updateOrderStatus          = updateOrderStatus;
 window.deleteOrder                = deleteOrder;
 window.activarNotificacionesAdmin = activarNotificacionesAdmin;
-window.detenerNotificacionesAdmin = detenerNotificacionesAdmin;
 
 // ============================================
 // INIT
