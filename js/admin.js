@@ -28,6 +28,44 @@ function toast(msg, isError = false) {
     setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.classList.add('hidden'), 300); }, 3000);
 }
 
+// ============================================
+// SONIDO DE NOTIFICACIÓN
+// Usa Web Audio API — no necesita archivos externos
+// ============================================
+function reproducirSonidoPedido() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Secuencia de 3 tonos ascendentes (como una campanilla)
+        const tonos = [
+            { freq: 880, start: 0,    dur: 0.15 },
+            { freq: 1100, start: 0.18, dur: 0.15 },
+            { freq: 1320, start: 0.36, dur: 0.25 }
+        ];
+
+        tonos.forEach(({ freq, start, dur }) => {
+            const osc  = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+
+            gain.gain.setValueAtTime(0, ctx.currentTime + start);
+            gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+
+            osc.start(ctx.currentTime + start);
+            osc.stop(ctx.currentTime + start + dur + 0.05);
+        });
+
+    } catch (e) {
+        console.log('Audio no disponible:', e.message);
+    }
+}
+
 function statusLabel(s) {
     return {
         nuevo:      'Nuevo',
@@ -99,7 +137,15 @@ function initPedidos() {
     if (pedidosListener) return;
     const q = window.fsQuery(window.fsCollection(window.db, 'orders'), window.fsOrderBy('createdAt', 'desc'));
     pedidosListener = window.fsOnSnapshot(q, snap => {
+        const pedidosAnteriores = allPedidos.length;
         allPedidos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Reproducir sonido si llegó un pedido nuevo
+        const hayNuevos = allPedidos.filter(p => p.status === 'nuevo').length;
+        if (pedidosAnteriores > 0 && allPedidos.length > pedidosAnteriores) {
+            reproducirSonidoPedido();
+        }
+
         renderPedidos();
     });
 }
@@ -384,6 +430,8 @@ async function cargarEstadoNegocio() {
         console.log('Error cargando estado negocio:', e);
     }
 }
+
+window.reproducirSonidoPedido = reproducirSonidoPedido;
 
 window.toggleEstadoNegocio = async function(abierto) {
     try {

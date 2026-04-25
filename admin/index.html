@@ -99,9 +99,14 @@
         <section id="sec-pedidos" class="section active">
             <div class="section-header">
                 <h2><i class="fas fa-receipt"></i> Pedidos</h2>
-                <button class="btn-icon" onclick="refreshPedidos()" title="Actualizar">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
+                <div style="display:flex;gap:8px">
+                    <button class="btn-icon" onclick="reproducirSonidoPedido()" title="Probar sonido">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                    <button class="btn-icon" onclick="refreshPedidos()" title="Actualizar">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
             </div>
             <div class="filters">
                 <button class="filter active" onclick="setFilter(this,'all')">Todos</button>
