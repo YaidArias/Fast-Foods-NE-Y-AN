@@ -144,6 +144,14 @@ function initSplash() {
 // ============================================
 function renderMenu() {
     const grid = document.getElementById('menu-grid');
+
+    // Eliminar cualquier título estático previo que pueda estar en el HTML
+    const menuSection = grid.closest('.menu-section');
+    if (menuSection) {
+        const staticTitle = menuSection.querySelector('h3.section-title');
+        if (staticTitle) staticTitle.remove();
+    }
+
     if (!PRODUCTS.length) {
         grid.innerHTML = '<div style="text-align:center;padding:40px;color:#999"><i class="fas fa-spinner fa-spin" style="font-size:2rem"></i><p style="margin-top:12px">Cargando menú...</p></div>';
         return;
