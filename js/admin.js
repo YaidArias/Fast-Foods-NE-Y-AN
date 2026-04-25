@@ -241,7 +241,8 @@ window.openProductForm = async function(prodId = null) {
                 document.getElementById('prod-precio').value = d.precio      || '';
                 document.getElementById('prod-badge').value  = d.badge       || '';
                 document.getElementById('prod-activo').value = String(d.activo !== false);
-                document.getElementById('prod-imagen').value = d.imagen      || '';
+                document.getElementById('prod-imagen').value    = d.imagen      || '';
+                document.getElementById('prod-categoria').value = d.categoria   || 'menu';
                 if (d.imagen) {
                     document.getElementById('img-preview').src = d.imagen;
                     document.getElementById('img-preview-wrap').style.display = 'block';
@@ -272,6 +273,7 @@ window.saveProduct = async function(e) {
             badge:       document.getElementById('prod-badge').value.trim() || null,
             activo:      document.getElementById('prod-activo').value === 'true',
             imagen:      document.getElementById('prod-imagen').value.trim() || null,
+            categoria:   document.getElementById('prod-categoria').value || 'menu',
             orden:       Date.now()
         };
 

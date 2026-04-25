@@ -140,34 +140,67 @@ function initSplash() {
 }
 
 // ============================================
-// RENDER MENU
+// RENDER MENU — con secciones por categoría
 // ============================================
 function renderMenu() {
     const grid = document.getElementById('menu-grid');
     if (!PRODUCTS.length) {
-        grid.innerHTML = `<div style="text-align:center;padding:40px;color:#999"><i class="fas fa-spinner fa-spin" style="font-size:2rem"></i><p style="margin-top:12px">Cargando menú...</p></div>`;
+        grid.innerHTML = '<div style="text-align:center;padding:40px;color:#999"><i class="fas fa-spinner fa-spin" style="font-size:2rem"></i><p style="margin-top:12px">Cargando menú...</p></div>';
         return;
     }
-    grid.innerHTML = PRODUCTS.map(product => `
-        <div class="product-card" onclick="openProductModal('${product.id}')">
-            <div class="product-image" style="${product.imagen ? `background-image:url('${product.imagen}');background-size:cover;background-position:center` : ''}">
-                ${!product.imagen ? `<i class="fas ${product.icon || 'fa-hamburger'}"></i>` : ''}
-                ${product.badge ? `<span class="product-badge">${product.badge}</span>` : ''}
-            </div>
-            <div class="product-info">
-                <h4 class="product-name">${product.nombre || product.name}</h4>
-                <p class="product-description">${product.descripcion || product.description}</p>
-                <div class="product-footer">
-                    <span class="product-price">${formatPrice(product.precio || product.price)}</span>
-                    <button class="btn-add" onclick="event.stopPropagation(); openProductModal('${product.id}')">
-                        <i class="fas fa-plus"></i> Agregar
-                    </button>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
 
+    // Agrupar productos por categoría
+    const categorias = {};
+    PRODUCTS.forEach(product => {
+        const cat = product.categoria || 'menu';
+        if (!categorias[cat]) categorias[cat] = [];
+        categorias[cat].push(product);
+    });
+
+    // Config de cada categoría
+    const catConfig = {
+        menu:    { titulo: 'Nuestro Menú', icono: 'fa-utensils'    },
+        bebidas: { titulo: 'Bebidas',       icono: 'fa-glass-water' },
+        otros:   { titulo: 'Otros',         icono: 'fa-star'        }
+    };
+
+    // Orden: menu primero, bebidas segundo, resto después
+    const orden = ['menu', 'bebidas', ...Object.keys(categorias).filter(c => c !== 'menu' && c !== 'bebidas')];
+
+    const productCard = (product) => {
+        const nombre = product.nombre || product.name;
+        const precio = product.precio || product.price;
+        const desc   = product.descripcion || product.description;
+        const icon   = product.icon || 'fa-hamburger';
+        const img    = product.imagen || null;
+        const badge  = product.badge || null;
+        const imgStyle = img ? 'background-image:url(' + img + ');background-size:cover;background-position:center' : '';
+        const iconHTML = !img ? '<i class="fas ' + icon + '"></i>' : '';
+        const badgeHTML = badge ? '<span class="product-badge">' + badge + '</span>' : '';
+        return '<div class="product-card" onclick="openProductModal('' + product.id + '')">'
+            + '<div class="product-image" style="' + imgStyle + '">' + iconHTML + badgeHTML + '</div>'
+            + '<div class="product-info">'
+            + '<h4 class="product-name">' + nombre + '</h4>'
+            + '<p class="product-description">' + desc + '</p>'
+            + '<div class="product-footer">'
+            + '<span class="product-price">' + formatPrice(precio) + '</span>'
+            + '<button class="btn-add" onclick="event.stopPropagation(); openProductModal('' + product.id + '')">'
+            + '<i class="fas fa-plus"></i> Agregar</button>'
+            + '</div></div></div>';
+    };
+
+    let html = '';
+    orden.forEach(cat => {
+        if (!categorias[cat] || categorias[cat].length === 0) return;
+        const cfg = catConfig[cat] || { titulo: cat, icono: 'fa-star' };
+        html += '<div class="menu-section-header" style="grid-column:1/-1;margin-top:8px">'
+            + '<h3 class="section-title"><i class="fas ' + cfg.icono + '"></i> ' + cfg.titulo + '</h3>'
+            + '</div>'
+            + categorias[cat].map(productCard).join('');
+    });
+
+    grid.innerHTML = html;
+}
 // ============================================
 // PRODUCT MODAL
 // ============================================
@@ -415,86 +448,35 @@ function closeMyOrders() {
     if (myOrdersUnsubscribe) { myOrdersUnsubscribe(); myOrdersUnsubscribe = null; }
 }
 
-async function loadMyOrders() {
+function loadMyOrders() {
     const myOrderIds = JSON.parse(localStorage.getItem('myOrders') || '[]');
     const ordersList = document.getElementById('orders-list');
-
     if (myOrderIds.length === 0) {
         ordersList.innerHTML = `<div class="orders-empty"><i class="fas fa-receipt"></i><p>No tienes pedidos aún</p></div>`;
         return;
     }
-
-    try {
-        // Usar getDocs (compatible con Safari/iPhone) con timeout de 8 segundos
-        const q = window.firebaseQuery(
-            window.firebaseCollection(window.db, 'orders'),
-            window.firebaseOrderBy('createdAt', 'desc')
-        );
-
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('timeout')), 8000)
-        );
-
-        const snapshot = await Promise.race([
-            window.firebaseGetDocs(q),
-            timeoutPromise
-        ]);
-
+    const q = window.firebaseQuery(window.firebaseCollection(window.db,'orders'), window.firebaseOrderBy('createdAt','desc'));
+    myOrdersUnsubscribe = window.firebaseOnSnapshot(q, snap => {
         const orders = [];
-        snapshot.forEach(d => {
-            const data = d.data();
-            if (myOrderIds.includes(data.orderId)) orders.push({ id: d.id, ...data });
-        });
-
+        snap.forEach(d => { const data = d.data(); if (myOrderIds.includes(data.orderId)) orders.push({ id: d.id, ...data }); });
         if (orders.length === 0) {
             ordersList.innerHTML = `<div class="orders-empty"><i class="fas fa-receipt"></i><p>No tienes pedidos aún</p></div>`;
             return;
         }
-
-        renderMyOrders(orders, ordersList);
-
-        // Activar listener en tiempo real después de carga inicial
-        try {
-            if (myOrdersUnsubscribe) myOrdersUnsubscribe();
-            myOrdersUnsubscribe = window.firebaseOnSnapshot(q, snap => {
-                const updated = [];
-                snap.forEach(d => {
-                    const data = d.data();
-                    if (myOrderIds.includes(data.orderId)) updated.push({ id: d.id, ...data });
-                });
-                if (updated.length > 0) renderMyOrders(updated, ordersList);
-            });
-        } catch (e) {
-            console.log('Listener tiempo real no disponible, usando modo estático');
-        }
-
-    } catch (error) {
-        console.error('Error cargando pedidos:', error);
-        ordersList.innerHTML = `
-            <div class="orders-empty">
-                <i class="fas fa-exclamation-circle"></i>
-                <p>Error al cargar pedidos</p>
-                <button onclick="loadMyOrders()" style="margin-top:12px;padding:8px 16px;background:#D35400;color:white;border:none;border-radius:8px;cursor:pointer;font-family:inherit">
-                    Reintentar
-                </button>
-            </div>`;
-    }
-}
-
-function renderMyOrders(orders, container) {
-    container.innerHTML = orders.map(order => `
-        <div class="order-card">
-            <div class="order-header">
-                <span class="order-id">${order.orderId}</span>
-                <span class="order-status status-${order.status}">${getStatusLabel(order.status)}</span>
-            </div>
-            <div class="order-items">${order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}</div>
-            <div class="order-total">${formatPrice(order.total)}</div>
-            <div class="order-meta">
-                <span><i class="fas fa-calendar"></i> ${formatDate(order.createdAt)}</span>
-                <span><i class="fas fa-credit-card"></i> ${order.paymentMethod}</span>
-            </div>
-        </div>`).join('');
+        ordersList.innerHTML = orders.map(order => `
+            <div class="order-card">
+                <div class="order-header">
+                    <span class="order-id">${order.orderId}</span>
+                    <span class="order-status status-${order.status}">${getStatusLabel(order.status)}</span>
+                </div>
+                <div class="order-items">${order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}</div>
+                <div class="order-total">${formatPrice(order.total)}</div>
+                <div class="order-meta">
+                    <span><i class="fas fa-calendar"></i> ${formatDate(order.createdAt)}</span>
+                    <span><i class="fas fa-credit-card"></i> ${order.paymentMethod}</span>
+                </div>
+            </div>`).join('');
+    });
 }
 
 function getStatusLabel(status) {
@@ -637,7 +619,6 @@ window.showAdminLogin             = showAdminLogin;
 window.closeAdminLogin            = closeAdminLogin;
 window.adminLogin                 = adminLogin;
 window.activarNotificacionesAdmin = activarNotificacionesAdmin;
-window.loadMyOrders               = loadMyOrders;
 
 // ============================================
 // INIT

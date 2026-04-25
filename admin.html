@@ -216,12 +216,22 @@
                     <img id="img-preview" src="" alt="Vista previa">
                 </div>
             </div>
-            <div class="field">
-                <label>Estado</label>
-                <select id="prod-activo">
-                    <option value="true">Activo (visible en el menú)</option>
-                    <option value="false">Inactivo (oculto)</option>
-                </select>
+            <div class="form-row">
+                <div class="field">
+                    <label>Categoría</label>
+                    <select id="prod-categoria">
+                        <option value="menu">Comidas</option>
+                        <option value="bebidas">Bebidas</option>
+                        <option value="otros">Otros</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Estado</label>
+                    <select id="prod-activo">
+                        <option value="true">Activo (visible en el menú)</option>
+                        <option value="false">Inactivo (oculto)</option>
+                    </select>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeProductForm()">Cancelar</button>
