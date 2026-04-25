@@ -630,6 +630,31 @@ if ('serviceWorker' in navigator) {
 }
 
 // ============================================
+// EXPONER FUNCIONES GLOBALMENTE (requerido por type="module")
+// ============================================
+window.openProductModal = openProductModal;
+window.closeModal = closeModal;
+window.changeQuantity = changeQuantity;
+window.addToCartFromModal = addToCartFromModal;
+window.showCart = showCart;
+window.closeCart = closeCart;
+window.updateCartItem = updateCartItem;
+window.removeCartItem = removeCartItem;
+window.checkout = checkout;
+window.closeCheckout = closeCheckout;
+window.sendOrder = sendOrder;
+window.closeSuccess = closeSuccess;
+window.showMyOrders = showMyOrders;
+window.closeMyOrders = closeMyOrders;
+window.showAdminLogin = showAdminLogin;
+window.closeAdminLogin = closeAdminLogin;
+window.adminLogin = adminLogin;
+window.closeAdminPanel = closeAdminPanel;
+window.refreshOrders = refreshOrders;
+window.filterOrders = filterOrders;
+window.updateOrderStatus = updateOrderStatus;
+window.deleteOrder = deleteOrder;
+// ============================================
 // INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
