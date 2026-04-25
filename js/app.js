@@ -177,14 +177,14 @@ function renderMenu() {
         const imgStyle = img ? 'background-image:url(' + img + ');background-size:cover;background-position:center' : '';
         const iconHTML = !img ? '<i class="fas ' + icon + '"></i>' : '';
         const badgeHTML = badge ? '<span class="product-badge">' + badge + '</span>' : '';
-        return '<div class="product-card" onclick="openProductModal('' + product.id + '')">'
-            + '<div class="product-image" style="' + imgStyle + '">' + iconHTML + badgeHTML + '</div>'
+        return `<div class="product-card" onclick="openProductModal('${product.id}')">`
+            + `<div class="product-image" style="${imgStyle}">${iconHTML}${badgeHTML}</div>`
             + '<div class="product-info">'
-            + '<h4 class="product-name">' + nombre + '</h4>'
-            + '<p class="product-description">' + desc + '</p>'
+            + `<h4 class="product-name">${nombre}</h4>`
+            + `<p class="product-description">${desc}</p>`
             + '<div class="product-footer">'
-            + '<span class="product-price">' + formatPrice(precio) + '</span>'
-            + '<button class="btn-add" onclick="event.stopPropagation(); openProductModal('' + product.id + '')">'
+            + `<span class="product-price">${formatPrice(precio)}</span>`
+            + `<button class="btn-add" onclick="event.stopPropagation(); openProductModal('${product.id}')">`
             + '<i class="fas fa-plus"></i> Agregar</button>'
             + '</div></div></div>';
     };
