@@ -165,7 +165,8 @@ function renderMenu() {
     };
 
     // Orden: menu primero, bebidas segundo, resto después
-    const orden = ['menu', 'bebidas', ...Object.keys(categorias).filter(c => c !== 'menu' && c !== 'bebidas')];
+    // filter() evita duplicados — solo mostrar categorías que tienen productos
+    const orden = [...new Set(['menu', 'bebidas', ...Object.keys(categorias)])];
 
     const productCard = (product) => {
         const nombre = product.nombre || product.name;
