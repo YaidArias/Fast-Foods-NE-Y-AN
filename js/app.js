@@ -312,8 +312,7 @@ async function sendOrder(event) {
 async function sendNtfyNotification(orderData) {
     const ntfyTopic = 'nean-pedidos-sq-2026';
     
-    const title = encodeURIComponent('🔔 Nuevo Pedido NE&AN');
-    const message = encodeURIComponent(
+    const message = 
         `📋 Orden: ${orderData.orderId}\n` +
         `👤 Cliente: ${orderData.customerName}\n` +
         `📱 Tel: ${orderData.customerPhone}\n` +
@@ -322,33 +321,50 @@ async function sendNtfyNotification(orderData) {
         `🛒 PRODUCTOS:\n` +
         orderData.items.map(i => `• ${i.quantity}x ${i.name} - $${i.price.toLocaleString('es-CO')}`).join('\n') +
         `\n\n💰 TOTAL: $${orderData.total.toLocaleString('es-CO')}\n` +
-        `${orderData.notes ? '📝 Notas: ' + orderData.notes + '\n' : ''}`
-    );
-    
-    // Método que funciona desde cualquier sitio (sin CORS)
-    const url = `https://ntfy.sh/${ntfyTopic}?title=${title}&message=${message}&priority=high&tags=shopping_cart,fire`;
+        `${orderData.notes ? '📝 Notas: ' + orderData.notes + '\n' : ''}`;
     
     try {
-        // Usar XMLHttpRequest en lugar de fetch (mejor compatibilidad)
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', url, true);
-        xhr.send();
-        console.log('✅ Notificación enviada por GET request');
+        // Crear formulario invisible y enviarlo
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `https://ntfy.sh/${ntfyTopic}`;
+        form.target = '_blank'; // Abre en nueva pestaña (pero la cerramos rápido)
+        form.style.display = 'none';
+        
+        // Campo del mensaje
+        const msgInput = document.createElement('input');
+        msgInput.name = '';
+        msgInput.value = message;
+        form.appendChild(msgInput);
+        
+        document.body.appendChild(form);
+        
+        // Enviar usando fetch con no-cors (funciona desde cualquier sitio)
+        fetch(`https://ntfy.sh/${ntfyTopic}`, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: message,
+            headers: {
+                'Title': '🔔 Nuevo Pedido NE&AN',
+                'Priority': 'high',
+                'Tags': 'shopping_cart,fire'
+            }
+        }).then(() => {
+            console.log('✅ Notificación enviada (no-cors)');
+        }).catch(() => {
+            // Si fetch falla, usar el formulario como backup
+            form.submit();
+            console.log('✅ Notificación enviada por formulario');
+        });
+        
+        // Limpiar
+        setTimeout(() => {
+            if (form.parentNode) document.body.removeChild(form);
+        }, 5000);
+        
     } catch (e) {
         console.log('❌ Error:', e);
     }
-}
-
-function showSuccessModal(orderId) {
-    const modal = document.getElementById('success-modal');
-    document.getElementById('success-order-id').textContent = `Pedido: ${orderId}`;
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeSuccess() {
-    document.getElementById('success-modal').classList.remove('active');
-    document.body.style.overflow = '';
 }
 
 // ============================================
