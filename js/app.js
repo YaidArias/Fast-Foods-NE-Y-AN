@@ -100,10 +100,10 @@ function openProductModal(productId) {
     currentProduct = PRODUCTS.find(p => p.id === productId);
     currentQuantity = 1;
     if (!currentProduct) return;
-
+    
     const modal = document.getElementById('product-modal');
     const modalProduct = document.getElementById('modal-product');
-
+    
     modalProduct.innerHTML = `
         <div class="modal-product-image">
             <i class="fas ${currentProduct.icon}"></i>
@@ -174,7 +174,7 @@ function showCart() {
     const modal = document.getElementById('cart-modal');
     const cartItems = document.getElementById('cart-items');
     const cartTotal = document.getElementById('cart-total');
-
+    
     if (cart.length === 0) {
         cartItems.innerHTML = `
             <div class="cart-empty">
@@ -239,14 +239,14 @@ function checkout() {
     const modal = document.getElementById('checkout-modal');
     const summaryItems = document.getElementById('order-summary-items');
     const summaryTotal = document.getElementById('order-summary-total');
-
+    
     summaryItems.innerHTML = cart.map(item => `
         <div class="summary-item">
             <span>${item.quantity}x ${item.name}</span>
             <span>${formatPrice(item.price * item.quantity)}</span>
         </div>
     `).join('');
-
+    
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     summaryTotal.textContent = formatPrice(total);
     modal.classList.add('active');
@@ -260,16 +260,16 @@ function closeCheckout() {
 
 async function sendOrder(event) {
     event.preventDefault();
-
+    
     const name = document.getElementById('customer-name').value.trim();
     const phone = document.getElementById('customer-phone').value.trim();
     const address = document.getElementById('customer-address').value.trim();
     const notes = document.getElementById('customer-notes').value.trim();
     const payment = document.querySelector('input[name="payment"]:checked').value;
-
+    
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const orderId = generateOrderId();
-
+    
     const orderData = {
         orderId: orderId,
         customerName: name,
@@ -283,53 +283,60 @@ async function sendOrder(event) {
         createdAt: new Date(),
         notified: false
     };
-
+    
     try {
         const ordersRef = window.firebaseCollection(window.db, 'orders');
         await window.firebaseAddDoc(ordersRef, orderData);
-
-        // Notificación WhatsApp
-        await sendWhatsAppNotification(orderData);
-
+        
+        // Notificación ntfy
+        await sendNtfyNotification(orderData);
+        
         // Guardar en localStorage
         let myOrders = JSON.parse(localStorage.getItem('myOrders') || '[]');
         myOrders.push(orderId);
         localStorage.setItem('myOrders', JSON.stringify(myOrders));
-
+        
         closeCheckout();
         showSuccessModal(orderId);
-
+        
         cart = [];
         updateCartBadge();
         document.getElementById('checkout-form').reset();
-
+        
     } catch (error) {
         console.error('Error:', error);
         showToast('Error al enviar pedido. Intenta de nuevo.');
     }
 }
 
-async function sendWhatsAppNotification(orderData) {
-    const message = encodeURIComponent(
-        `🔔 *NUEVO PEDIDO NE&AN*\n\n` +
+async function sendNtfyNotification(orderData) {
+    const ntfyTopic = 'nean-pedidos-sq-2026';
+    
+    const message = 
+        `🔔 NUEVO PEDIDO NE&AN\n` +
         `📋 Orden: ${orderData.orderId}\n` +
         `👤 Cliente: ${orderData.customerName}\n` +
         `📱 Tel: ${orderData.customerPhone}\n` +
         `📍 Dir: ${orderData.customerAddress}\n` +
         `💳 Pago: ${orderData.paymentMethod}\n\n` +
-        `🛒 *PRODUCTOS:*\n` +
+        `🛒 PRODUCTOS:\n` +
         orderData.items.map(i => `• ${i.quantity}x ${i.name} - $${i.price.toLocaleString('es-CO')}`).join('\n') +
-        `\n\n💰 *TOTAL: $${orderData.total.toLocaleString('es-CO')}*\n\n` +
-        `${orderData.notes ? '📝 Notas: ' + orderData.notes + '\n' : ''}`
-    );
-
-    // CallMeBot API
-    const botUrl = `https://api.callmebot.com/whatsapp.php?phone=${BUSINESS.whatsappNumber}&text=${message}&apikey=YOUR_API_KEY`;
-
+        `\n\n💰 TOTAL: $${orderData.total.toLocaleString('es-CO')}\n` +
+        `${orderData.notes ? '📝 Notas: ' + orderData.notes + '\n' : ''}`;
+    
     try {
-        await fetch(botUrl, { mode: 'no-cors' });
+        await fetch(`https://ntfy.sh/${ntfyTopic}`, {
+            method: 'POST',
+            body: message,
+            headers: {
+                'Title': '🔔 Nuevo Pedido NE&AN',
+                'Priority': 'high',
+                'Tags': 'shopping_cart,fire'
+            }
+        });
+        console.log('Notificación ntfy enviada');
     } catch (e) {
-        console.log('WhatsApp notification attempted');
+        console.log('Error enviando notificación:', e);
     }
 }
 
@@ -351,14 +358,14 @@ function closeSuccess() {
 function showMyOrders() {
     const modal = document.getElementById('my-orders-modal');
     const ordersList = document.getElementById('orders-list');
-
+    
     ordersList.innerHTML = `
         <div class="orders-empty">
             <i class="fas fa-spinner fa-spin"></i>
             <p>Cargando pedidos...</p>
         </div>
     `;
-
+    
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     loadMyOrders();
@@ -376,7 +383,7 @@ function closeMyOrders() {
 function loadMyOrders() {
     const myOrderIds = JSON.parse(localStorage.getItem('myOrders') || '[]');
     const ordersList = document.getElementById('orders-list');
-
+    
     if (myOrderIds.length === 0) {
         ordersList.innerHTML = `
             <div class="orders-empty">
@@ -386,10 +393,10 @@ function loadMyOrders() {
         `;
         return;
     }
-
+    
     const ordersRef = window.firebaseCollection(window.db, 'orders');
     const q = window.firebaseQuery(ordersRef, window.firebaseOrderBy('createdAt', 'desc'));
-
+    
     myOrdersUnsubscribe = window.firebaseOnSnapshot(q, (snapshot) => {
         const orders = [];
         snapshot.forEach(doc => {
@@ -398,7 +405,7 @@ function loadMyOrders() {
                 orders.push({ id: doc.id, ...data });
             }
         });
-
+        
         if (orders.length === 0) {
             ordersList.innerHTML = `
                 <div class="orders-empty">
@@ -408,7 +415,7 @@ function loadMyOrders() {
             `;
             return;
         }
-
+        
         ordersList.innerHTML = orders.map(order => `
             <div class="order-card">
                 <div class="order-header">
@@ -450,7 +457,7 @@ async function adminLogin(event) {
     event.preventDefault();
     const email = document.getElementById('admin-email').value;
     const password = document.getElementById('admin-password').value;
-
+    
     try {
         await window.firebaseSignIn(window.auth, email, password);
         closeAdminLogin();
@@ -483,10 +490,10 @@ function loadAdminOrders() {
             <p>Cargando pedidos...</p>
         </div>
     `;
-
+    
     const ordersRef = window.firebaseCollection(window.db, 'orders');
     const q = window.firebaseQuery(ordersRef, window.firebaseOrderBy('createdAt', 'desc'));
-
+    
     ordersUnsubscribe = window.firebaseOnSnapshot(q, (snapshot) => {
         const orders = [];
         snapshot.forEach(doc => {
@@ -498,11 +505,11 @@ function loadAdminOrders() {
 
 function renderAdminOrders(orders) {
     const adminOrders = document.getElementById('admin-orders');
-
+    
     const filteredOrders = currentFilter === 'all' 
         ? orders 
         : orders.filter(o => o.status === currentFilter);
-
+    
     if (filteredOrders.length === 0) {
         adminOrders.innerHTML = `
             <div class="orders-empty">
@@ -512,7 +519,7 @@ function renderAdminOrders(orders) {
         `;
         return;
     }
-
+    
     adminOrders.innerHTML = filteredOrders.map(order => `
         <div class="admin-order-card">
             <div class="admin-order-header">
@@ -621,32 +628,6 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.log('SW failed', err));
     });
 }
-
-// ============================================
-// EXPONER FUNCIONES GLOBALMENTE (requerido por type="module")
-// ============================================
-window.openProductModal = openProductModal;
-window.closeModal = closeModal;
-window.changeQuantity = changeQuantity;
-window.addToCartFromModal = addToCartFromModal;
-window.showCart = showCart;
-window.closeCart = closeCart;
-window.updateCartItem = updateCartItem;
-window.removeCartItem = removeCartItem;
-window.checkout = checkout;
-window.closeCheckout = closeCheckout;
-window.sendOrder = sendOrder;
-window.closeSuccess = closeSuccess;
-window.showMyOrders = showMyOrders;
-window.closeMyOrders = closeMyOrders;
-window.showAdminLogin = showAdminLogin;
-window.closeAdminLogin = closeAdminLogin;
-window.adminLogin = adminLogin;
-window.closeAdminPanel = closeAdminPanel;
-window.refreshOrders = refreshOrders;
-window.filterOrders = filterOrders;
-window.updateOrderStatus = updateOrderStatus;
-window.deleteOrder = deleteOrder;
 
 // ============================================
 // INIT
