@@ -1489,3 +1489,69 @@ body {
     background: #E0F2F1;
     color: #00695C;
 }
+
+/* ============================================
+   AGREGAR AL FINAL DE css/style.css
+   ============================================ */
+
+/* ── Logo en Splash Screen ──────────────── */
+.splash-logo-img {
+    width: 220px;
+    height: 220px;
+    object-fit: contain;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.3));
+}
+
+/* Ocultar elementos anteriores del splash que ya no se usan */
+.logo-circle { display: none; }
+.splash-title { display: none; }
+.splash-subtitle { display: none; }
+
+/* ── Logo en Header ─────────────────────── */
+.logo-small {
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+
+.header-logo-img {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    border-radius: 50%;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
+}
+
+/* ── Tarjetas uniformes ─────────────────── */
+.product-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.product-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.product-description {
+    flex: 1;
+}
+
+.product-footer {
+    margin-top: auto;
+    padding-top: 12px;
+}
+
+/* ── Estado En camino ────────────────────── */
+.status-encamino {
+    background: #E0F2F1;
+    color: #00695C;
+}
+
+.btn-status-encamino {
+    background: #E0F2F1;
+    color: #00695C;
+}

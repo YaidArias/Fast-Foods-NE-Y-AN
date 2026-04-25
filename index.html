@@ -13,7 +13,6 @@
 
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="images/icon-192.png">
-
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -34,21 +33,21 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        window.db = getFirestore(app);
+        window.db  = getFirestore(app);
         window.auth = getAuth(app);
-        window.firebaseCollection = collection;
-        window.firebaseAddDoc = addDoc;
-        window.firebaseOnSnapshot = onSnapshot;
-        window.firebaseQuery = query;
-        window.firebaseOrderBy = orderBy;
-        window.firebaseDoc = doc;
-        window.firebaseUpdateDoc = updateDoc;
-        window.firebaseDeleteDoc = deleteDoc;
-        window.firebaseWhere = where;
-        window.firebaseGetDocs = getDocs;
-        window.firebaseSignIn = signInWithEmailAndPassword;
+        window.firebaseCollection       = collection;
+        window.firebaseAddDoc           = addDoc;
+        window.firebaseOnSnapshot       = onSnapshot;
+        window.firebaseQuery            = query;
+        window.firebaseOrderBy          = orderBy;
+        window.firebaseDoc              = doc;
+        window.firebaseUpdateDoc        = updateDoc;
+        window.firebaseDeleteDoc        = deleteDoc;
+        window.firebaseWhere            = where;
+        window.firebaseGetDocs          = getDocs;
+        window.firebaseSignIn           = signInWithEmailAndPassword;
         window.firebaseOnAuthStateChanged = onAuthStateChanged;
-        window.firebaseSignOut = signOut;
+        window.firebaseSignOut          = signOut;
     </script>
 </head>
 <body>
@@ -56,12 +55,12 @@
     <div id="splash-screen" class="splash-screen">
         <div class="splash-content">
             <div class="logo-container">
-                <div class="logo-circle">
-                    <span class="logo-text">NE&AN</span>
-                </div>
+                <img
+                    src="https://res.cloudinary.com/dugfaijhq/image/upload/v1777104347/logo_bknqmw.png"
+                    alt="Comidas Rápidas NE&AN"
+                    class="splash-logo-img"
+                >
             </div>
-            <h1 class="splash-title">Comidas Rápidas</h1>
-            <p class="splash-subtitle">Chuzos, Chorizos, Salchipapas & Más</p>
             <div class="loading-bar">
                 <div class="loading-progress"></div>
             </div>
@@ -75,7 +74,11 @@
         <header class="header">
             <div class="header-content">
                 <div class="logo-small">
-                    <span>NE&AN</span>
+                    <img
+                        src="https://res.cloudinary.com/dugfaijhq/image/upload/v1777104347/logo_bknqmw.png"
+                        alt="NE&AN"
+                        class="header-logo-img"
+                    >
                 </div>
                 <div class="header-actions">
                     <button class="icon-btn" id="my-orders-btn" onclick="showMyOrders()" title="Mis Pedidos">
@@ -95,7 +98,7 @@
             <!-- Hero Section -->
             <section class="hero">
                 <div class="hero-content">
-                    <h2>¡Bienvenid@!</h2>
+                    <h2>¡Bienvenido!</h2>
                     <p>Pide tu comida favorita y te la llevamos gratis a tu casa 🛵</p>
                     <div class="hero-badge">
                         <i class="fas fa-motorcycle"></i>
@@ -141,7 +144,7 @@
                 </div>
             </section>
 
-            <!-- Admin Link (hidden by default) -->
+            <!-- Admin Link -->
             <div class="admin-access" id="admin-access" style="display:none;">
                 <button class="btn-admin" onclick="showAdminLogin()">
                     <i class="fas fa-cog"></i> Panel de Administración
@@ -307,36 +310,6 @@
                     <i class="fas fa-sign-in-alt"></i> Ingresar
                 </button>
             </form>
-        </div>
-    </div>
-
-    <!-- Admin Panel Modal -->
-    <div id="admin-panel-modal" class="modal admin-modal">
-        <div class="modal-content admin-content">
-            <div class="cart-header">
-                <h3><i class="fas fa-cog"></i> Panel de Pedidos</h3>
-                <div class="admin-actions">
-                    <button class="btn-refresh" onclick="refreshOrders()">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                    <button class="modal-close" onclick="closeAdminPanel()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="admin-filters">
-                <button class="filter-btn active" data-filter="all" onclick="filterOrders('all')">Todos</button>
-                <button class="filter-btn" data-filter="nuevo" onclick="filterOrders('nuevo')">Nuevos</button>
-                <button class="filter-btn" data-filter="preparando" onclick="filterOrders('preparando')">En Preparación</button>
-                <button class="filter-btn" data-filter="listo" onclick="filterOrders('listo')">Listos</button>
-                <button class="filter-btn" data-filter="entregado" onclick="filterOrders('entregado')">Entregados</button>
-            </div>
-            <div class="admin-orders" id="admin-orders">
-                <div class="orders-empty">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <p>Cargando pedidos...</p>
-                </div>
-            </div>
         </div>
     </div>
 
