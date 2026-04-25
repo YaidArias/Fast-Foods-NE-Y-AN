@@ -287,10 +287,10 @@ async function sendOrder(event) {
         const ordersRef = window.firebaseCollection(window.db, 'orders');
         await window.firebaseAddDoc(ordersRef, orderData);
         
-        // Enviar notificación ntfy
+        // Notificación ntfy (ya existente)
         sendNtfyNotification(orderData);
         
-        // Guardar en localStorage
+        // Guardar en localStorage para "Mis Pedidos"
         let myOrders = JSON.parse(localStorage.getItem('myOrders') || '[]');
         myOrders.push(orderId);
         localStorage.setItem('myOrders', JSON.stringify(myOrders));
@@ -323,7 +323,6 @@ function sendNtfyNotification(orderData) {
         '\n\n💰 TOTAL: $' + orderData.total.toLocaleString('es-CO') + '\n' +
         (orderData.notes ? '📝 Notas: ' + orderData.notes + '\n' : '');
     
-    // Usar no-cors para evitar restricciones
     fetch('https://ntfy.sh/' + ntfyTopic, {
         method: 'POST',
         mode: 'no-cors',
@@ -334,9 +333,9 @@ function sendNtfyNotification(orderData) {
             'Tags': 'shopping_cart,fire'
         }
     }).then(() => {
-        console.log('Notificación enviada');
+        console.log('Notificación ntfy enviada');
     }).catch((err) => {
-        console.log('Error notificación:', err);
+        console.log('Error ntfy:', err);
     });
 }
 
@@ -455,15 +454,22 @@ function closeAdminLogin() {
 
 async function adminLogin(event) {
     event.preventDefault();
+    const btn = event.target.querySelector('button[type="submit"]');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ingresando...';
+    btn.disabled = true;
+
     const email = document.getElementById('admin-email').value;
     const password = document.getElementById('admin-password').value;
     
     try {
         await window.firebaseSignIn(window.auth, email, password);
+        await activarNotificacionesAdmin(); // ← NUEVO: activa notificaciones push
         closeAdminLogin();
         showAdminPanel();
     } catch (error) {
         showToast('Credenciales incorrectas');
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
+        btn.disabled = false;
     }
 }
 
@@ -597,6 +603,110 @@ window.firebaseOnAuthStateChanged(window.auth, (user) => {
 });
 
 // ============================================
+// NOTIFICACIONES PUSH PARA ADMIN (100% gratis)
+// ============================================
+let notificacionesActivas  = false;
+let adminPushListener      = null;
+let pedidosYaVistos        = new Set();
+
+async function activarNotificacionesAdmin() {
+    if (!('Notification' in window)) return;
+
+    const permiso = await Notification.requestPermission();
+    if (permiso !== 'granted') {
+        showToast('⚠️ Activa las notificaciones del navegador para recibir alertas');
+        return;
+    }
+
+    notificacionesActivas = true;
+    iniciarListenerNuevosPedidos();
+    showToast('🔔 Notificaciones de pedidos activadas');
+}
+
+function iniciarListenerNuevosPedidos() {
+    if (adminPushListener) return;
+
+    const ordersRef = window.firebaseCollection(window.db, 'orders');
+    const q = window.firebaseQuery(ordersRef, window.firebaseOrderBy('createdAt', 'desc'));
+
+    let primeraVez = true;
+
+    adminPushListener = window.firebaseOnSnapshot(q, (snapshot) => {
+        // Primera carga: solo registrar IDs existentes, no notificar
+        if (primeraVez) {
+            snapshot.forEach(doc => pedidosYaVistos.add(doc.id));
+            primeraVez = false;
+            return;
+        }
+
+        // Detectar pedidos nuevos
+        snapshot.docChanges().forEach((change) => {
+            if (change.type !== 'added') return;
+
+            const docId = change.doc.id;
+            if (pedidosYaVistos.has(docId)) return;
+            pedidosYaVistos.add(docId);
+
+            const pedido = change.doc.data();
+
+            // Solo notificar si el pedido es de los últimos 30 segundos
+            const ahora    = Date.now();
+            const creado   = pedido.createdAt?.toDate
+                ? pedido.createdAt.toDate().getTime()
+                : ahora;
+
+            if (ahora - creado < 30000) {
+                mostrarNotificacionPedido(pedido);
+            }
+        });
+    });
+}
+
+async function mostrarNotificacionPedido(pedido) {
+    const payload = {
+        orderId:      pedido.orderId      || 'Nuevo',
+        customerName: pedido.customerName || 'Cliente',
+        items:        pedido.items        || [],
+        total:        pedido.total        || 0
+    };
+
+    // Intentar con Service Worker (funciona en background)
+    if ('serviceWorker' in navigator) {
+        try {
+            const swReg = await navigator.serviceWorker.ready;
+            if (swReg.active) {
+                swReg.active.postMessage({ type: 'NUEVO_PEDIDO', payload });
+                return;
+            }
+        } catch (e) {
+            console.log('SW no disponible, usando Notification directa');
+        }
+    }
+
+    // Fallback: notificación directa del navegador
+    if (Notification.permission === 'granted') {
+        const itemsResumen = payload.items.length
+            ? payload.items.map(i => `${i.quantity}x ${i.name}`).join(', ')
+            : 'Ver detalles';
+
+        new Notification(`🍔 Nuevo Pedido - ${payload.orderId}`, {
+            body: `${payload.customerName} pidió: ${itemsResumen}\nTotal: $${Number(payload.total).toLocaleString('es-CO')}`,
+            icon: '/images/icon-192.png',
+            requireInteraction: true
+        });
+    }
+}
+
+function detenerNotificacionesAdmin() {
+    if (adminPushListener) {
+        adminPushListener();
+        adminPushListener = null;
+    }
+    notificacionesActivas = false;
+    pedidosYaVistos.clear();
+}
+
+// ============================================
 // CLOSE MODALS
 // ============================================
 document.addEventListener('click', function(e) {
@@ -624,37 +734,38 @@ document.addEventListener('keydown', function(e) {
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('SW registered'))
-            .catch(err => console.log('SW failed', err));
+            .then(reg => console.log('SW registrado correctamente'))
+            .catch(err => console.log('SW falló:', err));
     });
 }
 
-
 // ============================================
-// EXPONER FUNCIONES GLOBALMENTE (requerido por type="module")
+// EXPONER FUNCIONES GLOBALMENTE
 // ============================================
-window.openProductModal = openProductModal;
-window.closeModal = closeModal;
-window.changeQuantity = changeQuantity;
-window.addToCartFromModal = addToCartFromModal;
-window.showCart = showCart;
-window.closeCart = closeCart;
-window.updateCartItem = updateCartItem;
-window.removeCartItem = removeCartItem;
-window.checkout = checkout;
-window.closeCheckout = closeCheckout;
-window.sendOrder = sendOrder;
-window.closeSuccess = closeSuccess;
-window.showMyOrders = showMyOrders;
-window.closeMyOrders = closeMyOrders;
-window.showAdminLogin = showAdminLogin;
-window.closeAdminLogin = closeAdminLogin;
-window.adminLogin = adminLogin;
-window.closeAdminPanel = closeAdminPanel;
-window.refreshOrders = refreshOrders;
-window.filterOrders = filterOrders;
-window.updateOrderStatus = updateOrderStatus;
-window.deleteOrder = deleteOrder;
+window.openProductModal          = openProductModal;
+window.closeModal                = closeModal;
+window.changeQuantity            = changeQuantity;
+window.addToCartFromModal        = addToCartFromModal;
+window.showCart                  = showCart;
+window.closeCart                 = closeCart;
+window.updateCartItem            = updateCartItem;
+window.removeCartItem            = removeCartItem;
+window.checkout                  = checkout;
+window.closeCheckout             = closeCheckout;
+window.sendOrder                 = sendOrder;
+window.closeSuccess              = closeSuccess;
+window.showMyOrders              = showMyOrders;
+window.closeMyOrders             = closeMyOrders;
+window.showAdminLogin            = showAdminLogin;
+window.closeAdminLogin           = closeAdminLogin;
+window.adminLogin                = adminLogin;
+window.closeAdminPanel           = closeAdminPanel;
+window.refreshOrders             = refreshOrders;
+window.filterOrders              = filterOrders;
+window.updateOrderStatus         = updateOrderStatus;
+window.deleteOrder               = deleteOrder;
+window.activarNotificacionesAdmin = activarNotificacionesAdmin;
+window.detenerNotificacionesAdmin = detenerNotificacionesAdmin;
 
 // ============================================
 // INIT
