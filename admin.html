@@ -2,16 +2,25 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#2C3E50">
-    <title>Panel Admin — NE&AN</title>
-    <link rel="stylesheet" href="css/admin.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#D35400">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NE&AN">
+    <meta name="description" content="Comidas Rápidas NE&AN - Chuzos, chorizos y más">
+
+    <title>Comidas Rápidas NE&AN</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="images/icon-192.png">
+    <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
 
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, setDoc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -24,231 +33,288 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        window.db   = getFirestore(app);
+        window.db  = getFirestore(app);
         window.auth = getAuth(app);
-
-        window.fsCollection = collection;
-        window.fsAddDoc     = addDoc;
-        window.fsOnSnapshot = onSnapshot;
-        window.fsQuery      = query;
-        window.fsOrderBy    = orderBy;
-        window.fsDoc        = doc;
-        window.fsUpdateDoc  = updateDoc;
-        window.fsDeleteDoc  = deleteDoc;
-        window.fsSetDoc     = setDoc;
-        window.fsGetDoc     = getDoc;
-        window.fsGetDocs    = getDocs;
-        window.fsSignIn     = signInWithEmailAndPassword;
-        window.fsOnAuth     = onAuthStateChanged;
-        window.fsSignOut    = signOut;
+        window.firebaseCollection       = collection;
+        window.firebaseAddDoc           = addDoc;
+        window.firebaseOnSnapshot       = onSnapshot;
+        window.firebaseQuery            = query;
+        window.firebaseOrderBy          = orderBy;
+        window.firebaseDoc              = doc;
+        window.firebaseUpdateDoc        = updateDoc;
+        window.firebaseDeleteDoc        = deleteDoc;
+        window.firebaseWhere            = where;
+        window.firebaseGetDocs          = getDocs;
+        window.firebaseSignIn           = signInWithEmailAndPassword;
+        window.firebaseOnAuthStateChanged = onAuthStateChanged;
+        window.firebaseSignOut          = signOut;
     </script>
 </head>
 <body>
-
-<!-- ── LOGIN ─────────────────────────────────────────────── -->
-<div id="login-screen" class="login-screen">
-    <div class="login-box">
-        <div class="login-logo"><span>NE&AN</span></div>
-        <h2>Panel de Administración</h2>
-        <p class="login-sub">Ingresa con tu cuenta de administrador</p>
-        <form id="login-form" onsubmit="doLogin(event)">
-            <div class="field">
-                <label><i class="fas fa-envelope"></i> Correo</label>
-                <input type="email" id="login-email" required placeholder="admin@nean.com">
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content">
+            <div class="logo-container">
+                <img
+                    src="https://res.cloudinary.com/dugfaijhq/image/upload/v1777131243/logo_nobg_wfhhzi.png"
+                    alt="Comidas Rápidas NE&AN"
+                    class="splash-logo-img"
+                >
             </div>
-            <div class="field">
-                <label><i class="fas fa-key"></i> Contraseña</label>
-                <input type="password" id="login-password" required placeholder="••••••••">
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
             </div>
-            <button type="submit" class="btn-login" id="login-btn">
-                <i class="fas fa-sign-in-alt"></i> Ingresar
-            </button>
-            <p class="login-error hidden" id="login-error">Credenciales incorrectas</p>
-        </form>
-        <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Volver a la app</a>
-    </div>
-</div>
-
-<!-- ── PANEL PRINCIPAL ────────────────────────────────────── -->
-<div id="admin-panel" class="admin-panel hidden">
-
-    <aside class="sidebar">
-        <div class="sidebar-logo">
-            <span>NE&AN</span>
-            <small>Admin</small>
         </div>
-        <nav class="sidebar-nav">
-            <button class="nav-item active" onclick="showSection('pedidos')">
-                <i class="fas fa-receipt"></i> Pedidos
-            </button>
-            <button class="nav-item" onclick="showSection('productos')">
-                <i class="fas fa-hamburger"></i> Productos
-            </button>
-            <button class="nav-item" onclick="showSection('negocio')">
-                <i class="fas fa-store"></i> Mi Negocio
-            </button>
-        </nav>
-        <button class="btn-logout" onclick="doLogout()">
-            <i class="fas fa-sign-out-alt"></i> Cerrar sesión
-        </button>
-    </aside>
+    </div>
 
-    <main class="admin-main">
+    <!-- App Container -->
+    <div id="app" class="app hidden">
 
-        <!-- ── PEDIDOS ── -->
-        <section id="sec-pedidos" class="section active">
-            <div class="section-header">
-                <h2><i class="fas fa-receipt"></i> Pedidos</h2>
-                <button class="btn-icon" onclick="refreshPedidos()" title="Actualizar">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-small">
+                    <img
+                        src="https://res.cloudinary.com/dugfaijhq/image/upload/v1777131243/logo_nobg_wfhhzi.png"
+                        alt="NE&AN"
+                        class="header-logo-img"
+                    >
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" id="my-orders-btn" onclick="showMyOrders()" title="Mis Pedidos">
+                        <i class="fas fa-receipt"></i>
+                    </button>
+                    <button class="icon-btn" id="cart-btn" onclick="showCart()">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-badge" id="cart-badge">0</span>
+                    </button>
+                </div>
             </div>
-            <div class="filters">
-                <button class="filter active" onclick="setFilter(this,'all')">Todos</button>
-                <button class="filter" onclick="setFilter(this,'nuevo')">Nuevos</button>
-                <button class="filter" onclick="setFilter(this,'preparando')">Preparando</button>
-                <button class="filter" onclick="setFilter(this,'listo')">Listos</button>
-                <button class="filter" onclick="setFilter(this,'encamino')">En Camino</button>
-                <button class="filter" onclick="setFilter(this,'entregado')">Entregados</button>
-            </div>
-            <div id="pedidos-list" class="cards-list">
-                <div class="empty"><i class="fas fa-spinner fa-spin"></i><p>Cargando...</p></div>
-            </div>
-        </section>
+        </header>
 
-        <!-- ── PRODUCTOS ── -->
-        <section id="sec-productos" class="section">
-            <div class="section-header">
-                <h2><i class="fas fa-hamburger"></i> Productos</h2>
-                <button class="btn-primary" onclick="openProductForm()">
-                    <i class="fas fa-plus"></i> Nuevo producto
-                </button>
-            </div>
-            <div id="productos-list" class="products-grid">
-                <div class="empty"><i class="fas fa-spinner fa-spin"></i><p>Cargando...</p></div>
-            </div>
-        </section>
+        <!-- Main Content -->
+        <main class="main-content">
 
-        <!-- ── NEGOCIO ── -->
-        <section id="sec-negocio" class="section">
-            <div class="section-header">
-                <h2><i class="fas fa-store"></i> Información del Negocio</h2>
-            </div>
-            <form id="negocio-form" onsubmit="saveNegocio(event)" class="negocio-form">
-                <div class="form-grid">
-                    <div class="field">
-                        <label><i class="fas fa-store"></i> Nombre del negocio</label>
-                        <input type="text" id="neg-nombre" placeholder="Comidas Rápidas NE&AN">
-                    </div>
-                    <div class="field">
-                        <label><i class="fas fa-map-marker-alt"></i> Ubicación</label>
-                        <input type="text" id="neg-ubicacion" placeholder="La Aurora, Cesar">
-                    </div>
-                    <div class="field">
-                        <label><i class="fas fa-phone"></i> Teléfono 1</label>
-                        <input type="tel" id="neg-tel1" placeholder="3156848558">
-                    </div>
-                    <div class="field">
-                        <label><i class="fas fa-phone"></i> Teléfono 2</label>
-                        <input type="tel" id="neg-tel2" placeholder="3226144727">
-                    </div>
-                    <div class="field">
-                        <label><i class="fas fa-calendar-alt"></i> Días de atención</label>
-                        <input type="text" id="neg-dias" placeholder="Viernes, Sábados y Domingo">
-                    </div>
-                    <div class="field">
-                        <label><i class="fas fa-clock"></i> Horario</label>
-                        <input type="text" id="neg-horario" placeholder="05:00 PM - 11:00 PM">
-                    </div>
-                    <div class="field full">
-                        <label><i class="fas fa-comment"></i> Mensaje de bienvenida</label>
-                        <textarea id="neg-bienvenida" rows="2" placeholder="¡Bienvenido! Pide tu comida favorita..."></textarea>
-                    </div>
-                    <div class="field full">
-                        <label><i class="fas fa-motorcycle"></i> Texto de domicilio</label>
-                        <input type="text" id="neg-domicilio" placeholder="Domicilio Gratis">
+            <!-- Hero Section -->
+            <section class="hero">
+                <div class="hero-content">
+                    <h2>¡Bienvenido!</h2>
+                    <p>Pide tu comida favorita y te la llevamos gratis a tu casa 🛵</p>
+                    <div class="hero-badge">
+                        <i class="fas fa-motorcycle"></i>
+                        <span>Domicilio Gratis</span>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary">
-                    <i class="fas fa-save"></i> Guardar cambios
+            </section>
+
+            <!-- Menu Section -->
+            <section class="menu-section">
+                <div class="menu-grid" id="menu-grid">
+                    <!-- Los productos se cargan con JS -->
+                </div>
+            </section>
+
+            <!-- Info Section -->
+            <section class="info-section">
+                <div class="info-card">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <h4>Horario</h4>
+                        <p>Viernes - Sábados y Domingo</p>
+                        <p>05:00 PM - 11:00 PM</p>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <div>
+                        <h4>Ubicación</h4>
+                        <p>La Aurora, Cesar</p>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-phone"></i>
+                    <div>
+                        <h4>Contacto</h4>
+                        <p>3156848558 - 3226144727</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Link -->
+            <div class="admin-access" id="admin-access" style="display:none;">
+                <button class="btn-admin" onclick="showAdminLogin()">
+                    <i class="fas fa-cog"></i> Panel de Administración
+                </button>
+            </div>
+
+            <footer class="footer">
+                <p>Comidas Rápidas NE&AN</p>
+                <p class="footer-sub">Hecho con ❤️ en La Aurora Cesar</p>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Product Detail Modal -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="modal-product" id="modal-product"></div>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="modal cart-modal">
+        <div class="modal-content cart-content">
+            <div class="cart-header">
+                <h3><i class="fas fa-shopping-cart"></i> Tu Pedido</h3>
+                <button class="modal-close" onclick="closeCart()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="cart-items" id="cart-items"></div>
+            <div class="cart-footer">
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span id="cart-total">$0</span>
+                </div>
+                <button class="btn-checkout" onclick="checkout()">
+                    <i class="fas fa-check-circle"></i>
+                    Confirmar Pedido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div id="checkout-modal" class="modal">
+        <div class="modal-content checkout-form">
+            <div class="cart-header">
+                <h3><i class="fas fa-user"></i> Datos de Entrega</h3>
+                <button class="modal-close" onclick="closeCheckout()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="checkout-form" onsubmit="sendOrder(event)">
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Nombre completo *</label>
+                    <input type="text" id="customer-name" required placeholder="Tu nombre">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-phone"></i> Teléfono *</label>
+                    <input type="tel" id="customer-phone" required placeholder="3XX XXX XXXX">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-map-marker-alt"></i> Dirección de entrega *</label>
+                    <textarea id="customer-address" required placeholder="Barrio, calle, casa/apto, punto de referencia..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-sticky-note"></i> Notas adicionales</label>
+                    <textarea id="customer-notes" placeholder="Sin cebolla, salsa aparte, etc."></textarea>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-money-bill-wave"></i> Método de pago</label>
+                    <div class="payment-options">
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="Efectivo" checked>
+                            <span><i class="fas fa-money-bill"></i> Efectivo</span>
+                        </label>
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="Nequi">
+                            <span><i class="fas fa-mobile-alt"></i> Nequi</span>
+                        </label>
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="Daviplata">
+                            <span><i class="fas fa-wallet"></i> Daviplata</span>
+                        </label>
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="Bre-B">
+                            <span><i class="fas fa-university"></i> Bre-B</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="order-summary">
+                    <h4>Resumen del pedido</h4>
+                    <div id="order-summary-items"></div>
+                    <div class="summary-total">
+                        <span>Total:</span>
+                        <span id="order-summary-total">$0</span>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-paper-plane"></i>
+                    Enviar Pedido
                 </button>
             </form>
-        </section>
-
-    </main>
-</div>
-
-<!-- ── MODAL PRODUCTO ─────────────────────────────────────── -->
-<div id="product-modal" class="overlay hidden">
-    <div class="modal-box">
-        <div class="modal-header">
-            <h3 id="modal-title">Nuevo Producto</h3>
-            <button onclick="closeProductForm()"><i class="fas fa-times"></i></button>
         </div>
-        <form id="product-form" onsubmit="saveProduct(event)">
-            <input type="hidden" id="prod-id">
-            <div class="field">
-                <label>Nombre del producto *</label>
-                <input type="text" id="prod-nombre" required placeholder="Ej: Choriespecial">
+    </div>
+
+    <!-- Order Success Modal -->
+    <div id="success-modal" class="modal">
+        <div class="modal-content success-content">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
             </div>
-            <div class="field">
-                <label>Descripción *</label>
-                <textarea id="prod-desc" required rows="3" placeholder="Describe el producto..."></textarea>
-            </div>
-            <div class="form-row">
-                <div class="field">
-                    <label>Precio (COP) *</label>
-                    <input type="number" id="prod-precio" required placeholder="15000" min="0">
-                </div>
-                <div class="field">
-                    <label>Badge (opcional)</label>
-                    <input type="text" id="prod-badge" placeholder="Ej: Nuevo, Especial">
-                </div>
-            </div>
-            <div class="field">
-                <label><i class="fas fa-image"></i> URL de imagen (Cloudinary)</label>
-                <div class="cloudinary-tip">
-                    <i class="fas fa-info-circle"></i>
-                    Sube tu foto en <a href="https://cloudinary.com" target="_blank">cloudinary.com</a> → Media Library → copia la URL y pégala aquí
-                </div>
-                <input type="url" id="prod-imagen" placeholder="https://res.cloudinary.com/tu-cuenta/image/upload/...">
-                <div class="img-preview-wrap" id="img-preview-wrap" style="display:none">
-                    <img id="img-preview" src="" alt="Vista previa">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="field">
-                    <label>Categoría</label>
-                    <select id="prod-categoria">
-                        <option value="menu">Comidas</option>
-                        <option value="bebidas">Bebidas</option>
-                        <option value="otros">Otros</option>
-                    </select>
-                </div>
-                <div class="field">
-                    <label>Estado</label>
-                    <select id="prod-activo">
-                        <option value="true">Activo (visible en el menú)</option>
-                        <option value="false">Inactivo (oculto)</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeProductForm()">Cancelar</button>
-                <button type="submit" class="btn-primary" id="save-prod-btn">
-                    <i class="fas fa-save"></i> Guardar
+            <h2>¡Pedido Enviado!</h2>
+            <p>Tu pedido ha sido recibido correctamente.</p>
+            <p class="success-order-id" id="success-order-id"></p>
+            <p class="success-note">Puedes ver el estado de tu pedido en "Mis Pedidos"</p>
+            <button class="btn-primary" onclick="closeSuccess()">
+                <i class="fas fa-utensils"></i> Seguir Comprando
+            </button>
+        </div>
+    </div>
+
+    <!-- My Orders Modal -->
+    <div id="my-orders-modal" class="modal">
+        <div class="modal-content orders-content">
+            <div class="cart-header">
+                <h3><i class="fas fa-receipt"></i> Mis Pedidos</h3>
+                <button class="modal-close" onclick="closeMyOrders()">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
-        </form>
+            <div class="orders-list" id="orders-list">
+                <div class="orders-empty">
+                    <i class="fas fa-receipt"></i>
+                    <p>No tienes pedidos aún</p>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
 
-<!-- ── TOAST ──────────────────────────────────────────────── -->
-<div id="toast" class="toast hidden">
-    <i class="fas fa-check-circle"></i>
-    <span id="toast-msg">Guardado</span>
-</div>
+    <!-- Admin Login Modal -->
+    <div id="admin-login-modal" class="modal">
+        <div class="modal-content login-form">
+            <div class="cart-header">
+                <h3><i class="fas fa-lock"></i> Panel Admin</h3>
+                <button class="modal-close" onclick="closeAdminLogin()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="admin-login-form" onsubmit="adminLogin(event)">
+                <div class="form-group">
+                    <label><i class="fas fa-envelope"></i> Correo</label>
+                    <input type="email" id="admin-email" required placeholder="admin@nean.com">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-key"></i> Contraseña</label>
+                    <input type="password" id="admin-password" required placeholder="••••••">
+                </div>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-sign-in-alt"></i> Ingresar
+                </button>
+            </form>
+        </div>
+    </div>
 
-<script src="js/admin.js" type="module"></script>
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toast-message">Producto agregado</span>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
