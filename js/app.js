@@ -2,40 +2,45 @@
    COMIDAS RÁPIDAS NE&AN - APP CON FIREBASE
    ============================================ */
 
-// ============================================
-// DATA
-// ============================================
-const PRODUCTS = [
-    { id: 1, name: "Chuzos", price: 5000, description: "Deliciosos chuzos asados a la parrilla con el sabor tradicional que te encanta.", icon: "fa-fire", badge: "Más vendido" },
-    { id: 2, name: "Chorizos Asados", price: 9000, description: "Chorizos santarrosanos asados a la perfección, jugosos y llenos de sabor.", icon: "fa-drumstick-bite", badge: null },
-    { id: 3, name: "Choriespecial", price: 18000, description: "Bollo, carne, pollo, chorizo santarrosano, queso, maíz, papa ripio y salsas. ¡La especialidad de la casa!", icon: "fa-star", badge: "Especialidad" },
-    { id: 4, name: "Choricarne", price: 15000, description: "Bollo, carne, chorizo, queso, maíz, papa ripio y salsas. Una explosión de sabores.", icon: "fa-hamburger", badge: null },
-    { id: 5, name: "Choripollo", price: 15000, description: "Bollo, pollo, chorizo, queso, maíz, papa ripio y salsas. La combinación perfecta.", icon: "fa-drumstick-bite", badge: null }
+// Productos por defecto (se sobreescriben con los de Firestore)
+const PRODUCTS_DEFAULT = [
+    { id: 'p1', nombre: "Chuzos",          precio: 5000,  descripcion: "Deliciosos chuzos asados a la parrilla con el sabor tradicional que te encanta.", icon: "fa-fire",         badge: "Más vendido" },
+    { id: 'p2', nombre: "Chorizos Asados", precio: 9000,  descripcion: "Chorizos santarrosanos asados a la perfección, jugosos y llenos de sabor.",       icon: "fa-drumstick-bite", badge: null },
+    { id: 'p3', nombre: "Choriespecial",   precio: 18000, descripcion: "Bollo, carne, pollo, chorizo santarrosano, queso, maíz, papa ripio y salsas.",     icon: "fa-star",          badge: "Especialidad" },
+    { id: 'p4', nombre: "Choricarne",      precio: 15000, descripcion: "Bollo, carne, chorizo, queso, maíz, papa ripio y salsas.",                         icon: "fa-hamburger",     badge: null },
+    { id: 'p5', nombre: "Choripollo",      precio: 15000, descripcion: "Bollo, pollo, chorizo, queso, maíz, papa ripio y salsas.",                         icon: "fa-drumstick-bite", badge: null }
 ];
 
-const BUSINESS = {
-    name: "Comidas Rápidas NE&AN",
-    phone: "3156848558",
-    whatsappNumber: "3156848558 - 3226144727",
-    address: "La Aurora, Cesar",
-    delivery: "Gratis"
+// Info por defecto del negocio
+const NEGOCIO_DEFAULT = {
+    nombre:     "Comidas Rápidas NE&AN",
+    ubicacion:  "La Aurora, Cesar",
+    tel1:       "3156848558",
+    tel2:       "3226144727",
+    dias:       "Viernes - Sábados y Domingo",
+    horario:    "05:00 PM - 11:00 PM",
+    bienvenida: "¡Bienvenido! Pide tu comida favorita y te la llevamos gratis a tu casa 🛵",
+    domicilio:  "Domicilio Gratis"
 };
+
+let PRODUCTS = [];
+let NEGOCIO  = { ...NEGOCIO_DEFAULT };
 
 // ============================================
 // STATE
 // ============================================
 let cart = [];
-let currentProduct = null;
+let currentProduct  = null;
 let currentQuantity = 1;
-let currentFilter = 'all';
-let ordersUnsubscribe = null;
-let myOrdersUnsubscribe = null;
+let currentFilter   = 'all';
+let ordersUnsubscribe    = null;
+let myOrdersUnsubscribe  = null;
 
 // ============================================
 // UTILITIES
 // ============================================
 function formatPrice(price) {
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(price);
+    return new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(price);
 }
 
 function generateOrderId() {
@@ -44,8 +49,7 @@ function generateOrderId() {
 
 function showToast(message) {
     const toast = document.getElementById('toast');
-    const toastMessage = document.getElementById('toast-message');
-    toastMessage.textContent = message;
+    document.getElementById('toast-message').textContent = message;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 2500);
 }
@@ -53,7 +57,74 @@ function showToast(message) {
 function formatDate(timestamp) {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+// ============================================
+// CARGAR DATOS DESDE FIRESTORE
+// ============================================
+async function loadFirestoreData() {
+    // 1. Cargar info del negocio
+    try {
+        const snap = await window.firebaseGetDocs(
+            window.firebaseQuery(window.firebaseCollection(window.db, 'config'))
+        );
+        snap.forEach(d => {
+            if (d.id === 'negocio') NEGOCIO = { ...NEGOCIO_DEFAULT, ...d.data() };
+        });
+        applyNegocioToUI();
+    } catch (e) { console.log('Usando info negocio por defecto'); }
+
+    // 2. Cargar productos desde Firestore
+    try {
+        const snap = await window.firebaseGetDocs(
+            window.firebaseCollection(window.db, 'productos')
+        );
+        const prods = [];
+        snap.forEach(d => {
+            const p = d.data();
+            if (p.activo !== false) prods.push({ id: d.id, ...p });
+        });
+
+        if (prods.length > 0) {
+            // Ordenar por campo 'orden'
+            prods.sort((a, b) => (a.orden || 0) - (b.orden || 0));
+            PRODUCTS = prods;
+        } else {
+            // Si no hay productos en Firestore, usar los por defecto
+            PRODUCTS = PRODUCTS_DEFAULT;
+        }
+    } catch (e) {
+        console.log('Usando productos por defecto');
+        PRODUCTS = PRODUCTS_DEFAULT;
+    }
+
+    renderMenu();
+}
+
+function applyNegocioToUI() {
+    // Actualizar hero
+    const heroP = document.querySelector('.hero-content p');
+    if (heroP) heroP.textContent = NEGOCIO.bienvenida;
+
+    // Actualizar badge domicilio
+    const heroBadge = document.querySelector('.hero-badge span');
+    if (heroBadge) heroBadge.textContent = NEGOCIO.domicilio;
+
+    // Actualizar info cards
+    const infoCards = document.querySelectorAll('.info-card');
+    if (infoCards.length >= 3) {
+        // Horario
+        const horarioPs = infoCards[0].querySelectorAll('p');
+        if (horarioPs[0]) horarioPs[0].textContent = NEGOCIO.dias;
+        if (horarioPs[1]) horarioPs[1].textContent = NEGOCIO.horario;
+        // Ubicación
+        const ubicP = infoCards[1].querySelector('p');
+        if (ubicP) ubicP.textContent = NEGOCIO.ubicacion;
+        // Teléfono
+        const telP = infoCards[2].querySelector('p');
+        if (telP) telP.textContent = `${NEGOCIO.tel1}${NEGOCIO.tel2 ? ' - ' + NEGOCIO.tel2 : ''}`;
+    }
 }
 
 // ============================================
@@ -61,7 +132,7 @@ function formatDate(timestamp) {
 // ============================================
 function initSplash() {
     const splash = document.getElementById('splash-screen');
-    const app = document.getElementById('app');
+    const app    = document.getElementById('app');
     setTimeout(() => {
         splash.classList.add('hidden');
         app.classList.remove('hidden');
@@ -73,18 +144,22 @@ function initSplash() {
 // ============================================
 function renderMenu() {
     const grid = document.getElementById('menu-grid');
+    if (!PRODUCTS.length) {
+        grid.innerHTML = `<div style="text-align:center;padding:40px;color:#999"><i class="fas fa-spinner fa-spin" style="font-size:2rem"></i><p style="margin-top:12px">Cargando menú...</p></div>`;
+        return;
+    }
     grid.innerHTML = PRODUCTS.map(product => `
-        <div class="product-card" onclick="openProductModal(${product.id})">
-            <div class="product-image">
-                <i class="fas ${product.icon}"></i>
+        <div class="product-card" onclick="openProductModal('${product.id}')">
+            <div class="product-image" style="${product.imagen ? `background-image:url('${product.imagen}');background-size:cover;background-position:center` : ''}">
+                ${!product.imagen ? `<i class="fas ${product.icon || 'fa-hamburger'}"></i>` : ''}
                 ${product.badge ? `<span class="product-badge">${product.badge}</span>` : ''}
             </div>
             <div class="product-info">
-                <h4 class="product-name">${product.name}</h4>
-                <p class="product-description">${product.description}</p>
+                <h4 class="product-name">${product.nombre || product.name}</h4>
+                <p class="product-description">${product.descripcion || product.description}</p>
                 <div class="product-footer">
-                    <span class="product-price">${formatPrice(product.price)}</span>
-                    <button class="btn-add" onclick="event.stopPropagation(); openProductModal(${product.id})">
+                    <span class="product-price">${formatPrice(product.precio || product.price)}</span>
+                    <button class="btn-add" onclick="event.stopPropagation(); openProductModal('${product.id}')">
                         <i class="fas fa-plus"></i> Agregar
                     </button>
                 </div>
@@ -97,21 +172,25 @@ function renderMenu() {
 // PRODUCT MODAL
 // ============================================
 function openProductModal(productId) {
-    currentProduct = PRODUCTS.find(p => p.id === productId);
+    currentProduct  = PRODUCTS.find(p => p.id === productId || p.id === String(productId));
     currentQuantity = 1;
     if (!currentProduct) return;
-    
+
+    const precio = currentProduct.precio || currentProduct.price;
+    const nombre = currentProduct.nombre || currentProduct.name;
+    const desc   = currentProduct.descripcion || currentProduct.description;
+    const icon   = currentProduct.icon || 'fa-hamburger';
+    const img    = currentProduct.imagen || null;
+
     const modal = document.getElementById('product-modal');
-    const modalProduct = document.getElementById('modal-product');
-    
-    modalProduct.innerHTML = `
-        <div class="modal-product-image">
-            <i class="fas ${currentProduct.icon}"></i>
+    document.getElementById('modal-product').innerHTML = `
+        <div class="modal-product-image" style="${img ? `background-image:url('${img}');background-size:cover;background-position:center` : ''}">
+            ${!img ? `<i class="fas ${icon}"></i>` : ''}
         </div>
         <div class="modal-product-info">
-            <h3 class="modal-product-name">${currentProduct.name}</h3>
-            <p class="modal-product-description">${currentProduct.description}</p>
-            <div class="modal-product-price">${formatPrice(currentProduct.price)}</div>
+            <h3 class="modal-product-name">${nombre}</h3>
+            <p class="modal-product-description">${desc}</p>
+            <div class="modal-product-price">${formatPrice(precio)}</div>
             <div class="quantity-selector">
                 <button class="qty-btn" onclick="changeQuantity(-1)"><i class="fas fa-minus"></i></button>
                 <span class="qty-value" id="modal-qty">1</span>
@@ -119,7 +198,7 @@ function openProductModal(productId) {
             </div>
             <button class="btn-add-modal" onclick="addToCartFromModal()">
                 <i class="fas fa-shopping-cart"></i>
-                Agregar ${formatPrice(currentProduct.price)} al carrito
+                Agregar ${formatPrice(precio)} al carrito
             </button>
         </div>
     `;
@@ -128,35 +207,36 @@ function openProductModal(productId) {
 }
 
 function changeQuantity(delta) {
-    currentQuantity += delta;
-    if (currentQuantity < 1) currentQuantity = 1;
-    if (currentQuantity > 20) currentQuantity = 20;
+    currentQuantity = Math.max(1, Math.min(20, currentQuantity + delta));
     document.getElementById('modal-qty').textContent = currentQuantity;
-    const total = currentProduct.price * currentQuantity;
+    const precio = currentProduct.precio || currentProduct.price;
     document.querySelector('.btn-add-modal').innerHTML = `
-        <i class="fas fa-shopping-cart"></i> Agregar ${formatPrice(total)} al carrito
+        <i class="fas fa-shopping-cart"></i> Agregar ${formatPrice(precio * currentQuantity)} al carrito
     `;
 }
 
 function addToCartFromModal() {
     if (!currentProduct) return;
-    const existingItem = cart.find(item => item.id === currentProduct.id);
-    if (existingItem) {
-        existingItem.quantity += currentQuantity;
+    const nombre = currentProduct.nombre || currentProduct.name;
+    const precio = currentProduct.precio || currentProduct.price;
+    const icon   = currentProduct.icon   || 'fa-hamburger';
+    const existing = cart.find(item => item.id === currentProduct.id);
+    if (existing) {
+        existing.quantity += currentQuantity;
     } else {
-        cart.push({ id: currentProduct.id, name: currentProduct.name, price: currentProduct.price, icon: currentProduct.icon, quantity: currentQuantity });
+        cart.push({ id: currentProduct.id, name: nombre, price: precio, icon, quantity: currentQuantity });
     }
     updateCartBadge();
     closeModal();
-    showToast(`${currentQuantity} ${currentProduct.name} agregado${currentQuantity > 1 ? 's' : ''}`);
-    currentProduct = null;
+    showToast(`${currentQuantity} ${nombre} agregado${currentQuantity > 1 ? 's' : ''}`);
+    currentProduct  = null;
     currentQuantity = 1;
 }
 
 function closeModal() {
     document.getElementById('product-modal').classList.remove('active');
     document.body.style.overflow = '';
-    currentProduct = null;
+    currentProduct  = null;
     currentQuantity = 1;
 }
 
@@ -165,24 +245,23 @@ function closeModal() {
 // ============================================
 function updateCartBadge() {
     const badge = document.getElementById('cart-badge');
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    badge.textContent = totalItems;
-    badge.style.display = totalItems > 0 ? 'flex' : 'none';
+    const total = cart.reduce((s, i) => s + i.quantity, 0);
+    badge.textContent = total;
+    badge.style.display = total > 0 ? 'flex' : 'none';
 }
 
 function showCart() {
-    const modal = document.getElementById('cart-modal');
+    const modal     = document.getElementById('cart-modal');
     const cartItems = document.getElementById('cart-items');
     const cartTotal = document.getElementById('cart-total');
-    
+
     if (cart.length === 0) {
         cartItems.innerHTML = `
             <div class="cart-empty">
                 <i class="fas fa-shopping-basket"></i>
                 <p>Tu carrito está vacío</p>
-                <p style="font-size: 0.85rem; margin-top: 8px;">¡Agrega algunos productos deliciosos!</p>
-            </div>
-        `;
+                <p style="font-size:0.85rem;margin-top:8px">¡Agrega algunos productos deliciosos!</p>
+            </div>`;
         cartTotal.textContent = formatPrice(0);
     } else {
         cartItems.innerHTML = cart.map((item, index) => `
@@ -193,15 +272,14 @@ function showCart() {
                     <div class="cart-item-price">${formatPrice(item.price * item.quantity)}</div>
                 </div>
                 <div class="cart-item-qty">
-                    <button class="cart-qty-btn" onclick="updateCartItem(${index}, -1)"><i class="fas fa-minus"></i></button>
+                    <button class="cart-qty-btn" onclick="updateCartItem(${index},-1)"><i class="fas fa-minus"></i></button>
                     <span class="cart-qty-value">${item.quantity}</span>
-                    <button class="cart-qty-btn" onclick="updateCartItem(${index}, 1)"><i class="fas fa-plus"></i></button>
+                    <button class="cart-qty-btn" onclick="updateCartItem(${index},1)"><i class="fas fa-plus"></i></button>
                 </div>
                 <button class="cart-item-remove" onclick="removeCartItem(${index})"><i class="fas fa-trash-alt"></i></button>
             </div>
         `).join('');
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        cartTotal.textContent = formatPrice(total);
+        cartTotal.textContent = formatPrice(cart.reduce((s, i) => s + i.price * i.quantity, 0));
     }
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
@@ -220,36 +298,28 @@ function updateCartItem(index, delta) {
 }
 
 function removeCartItem(index) {
-    const itemName = cart[index].name;
+    const name = cart[index].name;
     cart.splice(index, 1);
     updateCartBadge();
     showCart();
-    showToast(`${itemName} eliminado`);
+    showToast(`${name} eliminado`);
 }
 
 // ============================================
 // CHECKOUT & SEND ORDER
 // ============================================
 function checkout() {
-    if (cart.length === 0) {
-        showToast('Agrega productos primero');
-        return;
-    }
+    if (cart.length === 0) { showToast('Agrega productos primero'); return; }
     closeCart();
-    const modal = document.getElementById('checkout-modal');
     const summaryItems = document.getElementById('order-summary-items');
     const summaryTotal = document.getElementById('order-summary-total');
-    
-    summaryItems.innerHTML = cart.map(item => `
+    summaryItems.innerHTML = cart.map(i => `
         <div class="summary-item">
-            <span>${item.quantity}x ${item.name}</span>
-            <span>${formatPrice(item.price * item.quantity)}</span>
-        </div>
-    `).join('');
-    
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    summaryTotal.textContent = formatPrice(total);
-    modal.classList.add('active');
+            <span>${i.quantity}x ${i.name}</span>
+            <span>${formatPrice(i.price * i.quantity)}</span>
+        </div>`).join('');
+    summaryTotal.textContent = formatPrice(cart.reduce((s, i) => s + i.price * i.quantity, 0));
+    document.getElementById('checkout-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
 
@@ -260,45 +330,32 @@ function closeCheckout() {
 
 async function sendOrder(event) {
     event.preventDefault();
-    
     const name    = document.getElementById('customer-name').value.trim();
     const phone   = document.getElementById('customer-phone').value.trim();
     const address = document.getElementById('customer-address').value.trim();
     const notes   = document.getElementById('customer-notes').value.trim();
     const payment = document.querySelector('input[name="payment"]:checked').value;
-    const total   = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total   = cart.reduce((s, i) => s + i.price * i.quantity, 0);
     const orderId = generateOrderId();
-    
+
     const orderData = {
-        orderId,
-        customerName:    name,
-        customerPhone:   phone,
-        customerAddress: address,
-        notes,
-        paymentMethod:   payment,
-        items: cart.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
-        total,
-        status:    'nuevo',
-        createdAt: new Date()
+        orderId, customerName: name, customerPhone: phone,
+        customerAddress: address, notes, paymentMethod: payment,
+        items: cart.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+        total, status: 'nuevo', createdAt: new Date()
     };
-    
+
     try {
-        const ordersRef = window.firebaseCollection(window.db, 'orders');
-        await window.firebaseAddDoc(ordersRef, orderData);
-        
-        // Notificacion ntfy (sin await para no bloquear el flujo)
+        await window.firebaseAddDoc(window.firebaseCollection(window.db, 'orders'), orderData);
         sendNtfyNotification(orderData);
-        
         let myOrders = JSON.parse(localStorage.getItem('myOrders') || '[]');
         myOrders.push(orderId);
         localStorage.setItem('myOrders', JSON.stringify(myOrders));
-        
         closeCheckout();
         showSuccessModal(orderId);
         cart = [];
         updateCartBadge();
         document.getElementById('checkout-form').reset();
-        
     } catch (error) {
         console.error('Error:', error);
         showToast('Error al enviar pedido. Intenta de nuevo.');
@@ -306,16 +363,11 @@ async function sendOrder(event) {
 }
 
 // ============================================
-// NTFY - SIN EMOJIS EN EL BODY (fix error ByteString)
+// NTFY NOTIFICACIÓN
 // ============================================
 function sendNtfyNotification(orderData) {
     const ntfyTopic = 'nean-pedidos-sq-2026';
-
-    const itemsTexto = orderData.items
-        .map(i => `- ${i.quantity}x ${i.name} ($${i.price.toLocaleString('es-CO')})`)
-        .join('\n');
-
-    // Sin emojis en el body — van como Tags aparte
+    const itemsTexto = orderData.items.map(i => `- ${i.quantity}x ${i.name} ($${i.price.toLocaleString('es-CO')})`).join('\n');
     const mensaje =
         `NUEVO PEDIDO NE&AN\n` +
         `Orden: ${orderData.orderId}\n` +
@@ -327,33 +379,18 @@ function sendNtfyNotification(orderData) {
         `TOTAL: $${orderData.total.toLocaleString('es-CO')}` +
         (orderData.notes ? `\nNotas: ${orderData.notes}` : '');
 
-    // Codificar el mensaje a Latin-1 seguro usando encodeURIComponent
     fetch(`https://ntfy.sh/${ntfyTopic}`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'text/plain',
-            'Title':    'Nuevo Pedido NE&AN',
-            'Priority': 'high',
-            'Tags':     'shopping_cart,fire,bell'
-        },
+        headers: { 'Content-Type':'text/plain', 'Title':'Nuevo Pedido NE&AN', 'Priority':'high', 'Tags':'shopping_cart,fire,bell' },
         body: mensaje
     })
-    .then(res => {
-        if (res.ok) {
-            console.log('Notificacion ntfy enviada correctamente');
-        } else {
-            console.log('ntfy respondio con error:', res.status);
-        }
-    })
-    .catch(err => {
-        console.log('Error enviando ntfy:', err.message);
-    });
+    .then(res => console.log(res.ok ? 'Notificacion ntfy enviada correctamente' : 'ntfy error: ' + res.status))
+    .catch(err => console.log('Error ntfy:', err.message));
 }
 
 function showSuccessModal(orderId) {
-    const modal = document.getElementById('success-modal');
     document.getElementById('success-order-id').textContent = 'Pedido: ' + orderId;
-    modal.classList.add('active');
+    document.getElementById('success-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
 
@@ -366,15 +403,8 @@ function closeSuccess() {
 // MY ORDERS
 // ============================================
 function showMyOrders() {
-    const modal = document.getElementById('my-orders-modal');
-    const ordersList = document.getElementById('orders-list');
-    ordersList.innerHTML = `
-        <div class="orders-empty">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Cargando pedidos...</p>
-        </div>
-    `;
-    modal.classList.add('active');
+    document.getElementById('orders-list').innerHTML = `<div class="orders-empty"><i class="fas fa-spinner fa-spin"></i><p>Cargando pedidos...</p></div>`;
+    document.getElementById('my-orders-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
     loadMyOrders();
 }
@@ -388,27 +418,18 @@ function closeMyOrders() {
 function loadMyOrders() {
     const myOrderIds = JSON.parse(localStorage.getItem('myOrders') || '[]');
     const ordersList = document.getElementById('orders-list');
-    
     if (myOrderIds.length === 0) {
         ordersList.innerHTML = `<div class="orders-empty"><i class="fas fa-receipt"></i><p>No tienes pedidos aún</p></div>`;
         return;
     }
-    
-    const ordersRef = window.firebaseCollection(window.db, 'orders');
-    const q = window.firebaseQuery(ordersRef, window.firebaseOrderBy('createdAt', 'desc'));
-    
-    myOrdersUnsubscribe = window.firebaseOnSnapshot(q, (snapshot) => {
+    const q = window.firebaseQuery(window.firebaseCollection(window.db,'orders'), window.firebaseOrderBy('createdAt','desc'));
+    myOrdersUnsubscribe = window.firebaseOnSnapshot(q, snap => {
         const orders = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (myOrderIds.includes(data.orderId)) orders.push({ id: doc.id, ...data });
-        });
-        
+        snap.forEach(d => { const data = d.data(); if (myOrderIds.includes(data.orderId)) orders.push({ id: d.id, ...data }); });
         if (orders.length === 0) {
             ordersList.innerHTML = `<div class="orders-empty"><i class="fas fa-receipt"></i><p>No tienes pedidos aún</p></div>`;
             return;
         }
-        
         ordersList.innerHTML = orders.map(order => `
             <div class="order-card">
                 <div class="order-header">
@@ -421,18 +442,16 @@ function loadMyOrders() {
                     <span><i class="fas fa-calendar"></i> ${formatDate(order.createdAt)}</span>
                     <span><i class="fas fa-credit-card"></i> ${order.paymentMethod}</span>
                 </div>
-            </div>
-        `).join('');
+            </div>`).join('');
     });
 }
 
 function getStatusLabel(status) {
-    const labels = { nuevo: 'Nuevo', preparando: 'En Preparación', listo: 'Listo', entregado: 'Entregado' };
-    return labels[status] || status;
+    return { nuevo:'Nuevo', preparando:'En Preparación', listo:'Listo', entregado:'Entregado' }[status] || status;
 }
 
 // ============================================
-// ADMIN PANEL
+// ADMIN (login rápido desde la app principal)
 // ============================================
 function showAdminLogin() {
     document.getElementById('admin-login-modal').classList.add('active');
@@ -456,7 +475,8 @@ async function adminLogin(event) {
         );
         await activarNotificacionesAdmin();
         closeAdminLogin();
-        showAdminPanel();
+        // Redirigir al panel admin
+        window.location.href = '/admin.html';
     } catch (error) {
         showToast('Credenciales incorrectas');
         btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
@@ -464,115 +484,8 @@ async function adminLogin(event) {
     }
 }
 
-function showAdminPanel() {
-    document.getElementById('admin-panel-modal').classList.add('active');
-    document.body.style.overflow = 'hidden';
-    loadAdminOrders();
-}
-
-function closeAdminPanel() {
-    document.getElementById('admin-panel-modal').classList.remove('active');
-    document.body.style.overflow = '';
-    if (ordersUnsubscribe) { ordersUnsubscribe(); ordersUnsubscribe = null; }
-}
-
-function loadAdminOrders() {
-    const adminOrders = document.getElementById('admin-orders');
-    adminOrders.innerHTML = `<div class="orders-empty"><i class="fas fa-spinner fa-spin"></i><p>Cargando pedidos...</p></div>`;
-    
-    const q = window.firebaseQuery(
-        window.firebaseCollection(window.db, 'orders'),
-        window.firebaseOrderBy('createdAt', 'desc')
-    );
-    
-    ordersUnsubscribe = window.firebaseOnSnapshot(q, (snapshot) => {
-        const orders = [];
-        snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
-        renderAdminOrders(orders);
-    });
-}
-
-function renderAdminOrders(orders) {
-    const adminOrders = document.getElementById('admin-orders');
-    const filteredOrders = currentFilter === 'all' ? orders : orders.filter(o => o.status === currentFilter);
-    
-    if (filteredOrders.length === 0) {
-        adminOrders.innerHTML = `<div class="orders-empty"><i class="fas fa-inbox"></i><p>No hay pedidos ${currentFilter !== 'all' ? 'en este estado' : ''}</p></div>`;
-        return;
-    }
-    
-    adminOrders.innerHTML = filteredOrders.map(order => `
-        <div class="admin-order-card">
-            <div class="admin-order-header">
-                <div class="admin-order-info">
-                    <h4>${order.orderId}</h4>
-                    <p><i class="fas fa-user"></i> ${order.customerName} | <i class="fas fa-phone"></i> ${order.customerPhone}</p>
-                    <p><i class="fas fa-map-marker-alt"></i> ${order.customerAddress}</p>
-                    ${order.notes ? `<p><i class="fas fa-sticky-note"></i> ${order.notes}</p>` : ''}
-                </div>
-                <div class="admin-order-actions">
-                    <span class="order-status status-${order.status}">${getStatusLabel(order.status)}</span>
-                </div>
-            </div>
-            <div class="admin-order-items">
-                ${order.items.map(i => `• ${i.quantity}x ${i.name} ($${i.price.toLocaleString('es-CO')})`).join('<br>')}
-            </div>
-            <div class="admin-order-footer">
-                <span class="admin-order-total">${formatPrice(order.total)}</span>
-                <span class="admin-order-payment"><i class="fas fa-credit-card"></i> ${order.paymentMethod}</span>
-                <span style="font-size:0.8rem;color:var(--gray-600)">${formatDate(order.createdAt)}</span>
-            </div>
-            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-                ${order.status !== 'nuevo'      ? `<button class="btn-status btn-status-nuevo"      onclick="updateOrderStatus('${order.id}', 'nuevo')">Nuevo</button>` : ''}
-                ${order.status !== 'preparando' ? `<button class="btn-status btn-status-preparando" onclick="updateOrderStatus('${order.id}', 'preparando')">Preparando</button>` : ''}
-                ${order.status !== 'listo'      ? `<button class="btn-status btn-status-listo"      onclick="updateOrderStatus('${order.id}', 'listo')">Listo</button>` : ''}
-                ${order.status !== 'entregado'  ? `<button class="btn-status btn-status-entregado"  onclick="updateOrderStatus('${order.id}', 'entregado')">Entregado</button>` : ''}
-                <button class="btn-status btn-delete" onclick="deleteOrder('${order.id}')"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function filterOrders(filter) {
-    currentFilter = filter;
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === filter));
-    loadAdminOrders();
-}
-
-async function updateOrderStatus(orderId, status) {
-    try {
-        await window.firebaseUpdateDoc(window.firebaseDoc(window.db, 'orders', orderId), { status });
-        showToast(`Pedido marcado como: ${getStatusLabel(status)}`);
-    } catch (error) {
-        showToast('Error al actualizar estado');
-    }
-}
-
-async function deleteOrder(orderId) {
-    if (!confirm('¿Eliminar este pedido?')) return;
-    try {
-        await window.firebaseDeleteDoc(window.firebaseDoc(window.db, 'orders', orderId));
-        showToast('Pedido eliminado');
-    } catch (error) {
-        showToast('Error al eliminar');
-    }
-}
-
-function refreshOrders() {
-    loadAdminOrders();
-    showToast('Pedidos actualizados');
-}
-
 // ============================================
-// AUTH STATE
-// ============================================
-window.firebaseOnAuthStateChanged(window.auth, (user) => {
-    const adminAccess = document.getElementById('admin-access');
-    if (adminAccess) adminAccess.style.display = 'block';
-});
-
-// ============================================
-// NOTIFICACIONES PUSH PARA ADMIN (100% gratis)
+// NOTIFICACIONES PUSH PARA ADMIN
 // ============================================
 let notificacionesActivas = false;
 let adminPushListener     = null;
@@ -581,10 +494,7 @@ let pedidosYaVistos       = new Set();
 async function activarNotificacionesAdmin() {
     if (!('Notification' in window)) return;
     const permiso = await Notification.requestPermission();
-    if (permiso !== 'granted') {
-        showToast('Activa las notificaciones del navegador');
-        return;
-    }
+    if (permiso !== 'granted') { showToast('Activa las notificaciones del navegador'); return; }
     notificacionesActivas = true;
     iniciarListenerNuevosPedidos();
     showToast('Notificaciones activadas');
@@ -592,18 +502,11 @@ async function activarNotificacionesAdmin() {
 
 function iniciarListenerNuevosPedidos() {
     if (adminPushListener) return;
-    const q = window.firebaseQuery(
-        window.firebaseCollection(window.db, 'orders'),
-        window.firebaseOrderBy('createdAt', 'desc')
-    );
+    const q = window.firebaseQuery(window.firebaseCollection(window.db,'orders'), window.firebaseOrderBy('createdAt','desc'));
     let primeraVez = true;
-    adminPushListener = window.firebaseOnSnapshot(q, (snapshot) => {
-        if (primeraVez) {
-            snapshot.forEach(doc => pedidosYaVistos.add(doc.id));
-            primeraVez = false;
-            return;
-        }
-        snapshot.docChanges().forEach((change) => {
+    adminPushListener = window.firebaseOnSnapshot(q, snap => {
+        if (primeraVez) { snap.forEach(d => pedidosYaVistos.add(d.id)); primeraVez = false; return; }
+        snap.docChanges().forEach(change => {
             if (change.type !== 'added') return;
             const docId = change.doc.id;
             if (pedidosYaVistos.has(docId)) return;
@@ -617,12 +520,7 @@ function iniciarListenerNuevosPedidos() {
 }
 
 async function mostrarNotificacionPedido(pedido) {
-    const payload = {
-        orderId:      pedido.orderId      || 'Nuevo',
-        customerName: pedido.customerName || 'Cliente',
-        items:        pedido.items        || [],
-        total:        pedido.total        || 0
-    };
+    const payload = { orderId: pedido.orderId || 'Nuevo', customerName: pedido.customerName || 'Cliente', items: pedido.items || [], total: pedido.total || 0 };
     if ('serviceWorker' in navigator) {
         try {
             const swReg = await navigator.serviceWorker.ready;
@@ -630,11 +528,10 @@ async function mostrarNotificacionPedido(pedido) {
         } catch (e) {}
     }
     if (Notification.permission === 'granted') {
-        const itemsResumen = payload.items.length ? payload.items.map(i => `${i.quantity}x ${i.name}`).join(', ') : 'Ver detalles';
+        const resumen = payload.items.length ? payload.items.map(i => `${i.quantity}x ${i.name}`).join(', ') : 'Ver detalles';
         new Notification(`Nuevo Pedido - ${payload.orderId}`, {
-            body: `${payload.customerName} pidio: ${itemsResumen}. Total: $${Number(payload.total).toLocaleString('es-CO')}`,
-            icon: '/images/icon-192.png',
-            requireInteraction: true
+            body: `${payload.customerName} pidio: ${resumen}. Total: $${Number(payload.total).toLocaleString('es-CO')}`,
+            icon: '/images/icon-192.png', requireInteraction: true
         });
     }
 }
@@ -644,21 +541,17 @@ async function mostrarNotificacionPedido(pedido) {
 // ============================================
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('modal') && e.target.classList.contains('active')) {
-        if (e.target.id === 'product-modal')    closeModal();
-        if (e.target.id === 'cart-modal')       closeCart();
-        if (e.target.id === 'checkout-modal')   closeCheckout();
-        if (e.target.id === 'success-modal')    closeSuccess();
-        if (e.target.id === 'my-orders-modal')  closeMyOrders();
+        if (e.target.id === 'product-modal')     closeModal();
+        if (e.target.id === 'cart-modal')        closeCart();
+        if (e.target.id === 'checkout-modal')    closeCheckout();
+        if (e.target.id === 'success-modal')     closeSuccess();
+        if (e.target.id === 'my-orders-modal')   closeMyOrders();
         if (e.target.id === 'admin-login-modal') closeAdminLogin();
-        if (e.target.id === 'admin-panel-modal') closeAdminPanel();
     }
 });
 
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeModal(); closeCart(); closeCheckout(); closeSuccess();
-        closeMyOrders(); closeAdminLogin(); closeAdminPanel();
-    }
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal(); closeCart(); closeCheckout(); closeSuccess(); closeMyOrders(); closeAdminLogin(); }
 });
 
 // ============================================
@@ -692,18 +585,13 @@ window.closeMyOrders              = closeMyOrders;
 window.showAdminLogin             = showAdminLogin;
 window.closeAdminLogin            = closeAdminLogin;
 window.adminLogin                 = adminLogin;
-window.closeAdminPanel            = closeAdminPanel;
-window.refreshOrders              = refreshOrders;
-window.filterOrders               = filterOrders;
-window.updateOrderStatus          = updateOrderStatus;
-window.deleteOrder                = deleteOrder;
 window.activarNotificacionesAdmin = activarNotificacionesAdmin;
 
 // ============================================
 // INIT
 // ============================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initSplash();
-    renderMenu();
     updateCartBadge();
+    await loadFirestoreData();
 });

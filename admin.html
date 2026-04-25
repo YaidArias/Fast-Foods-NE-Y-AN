@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2C3E50">
+    <title>Panel Admin — NE&AN</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAexLH_x_hb5KQoEKkPHjTzfwvuAJ6ZHEA",
+            authDomain: "fast-foods-ne-y-an.firebaseapp.com",
+            projectId: "fast-foods-ne-y-an",
+            storageBucket: "fast-foods-ne-y-an.firebasestorage.app",
+            messagingSenderId: "992427551621",
+            appId: "1:992427551621:web:c5b2286cb4cad3e83332ec"
+        };
+
+        const app  = initializeApp(firebaseConfig);
+        window.db  = getFirestore(app);
+        window.auth    = getAuth(app);
+        window.storage = getStorage(app);
+
+        window.fsCollection  = collection;
+        window.fsAddDoc      = addDoc;
+        window.fsOnSnapshot  = onSnapshot;
+        window.fsQuery       = query;
+        window.fsOrderBy     = orderBy;
+        window.fsDoc         = doc;
+        window.fsUpdateDoc   = updateDoc;
+        window.fsDeleteDoc   = deleteDoc;
+        window.fsSetDoc      = setDoc;
+        window.fsGetDoc      = getDoc;
+        window.fsSignIn      = signInWithEmailAndPassword;
+        window.fsOnAuth      = onAuthStateChanged;
+        window.fsSignOut     = signOut;
+        window.stRef         = ref;
+        window.stUpload      = uploadBytes;
+        window.stGetURL      = getDownloadURL;
+        window.stDelete      = deleteObject;
+    </script>
+</head>
+<body>
+
+<!-- ── LOGIN ─────────────────────────────────────────────── -->
+<div id="login-screen" class="login-screen">
+    <div class="login-box">
+        <div class="login-logo">
+            <span>NE&AN</span>
+        </div>
+        <h2>Panel de Administración</h2>
+        <p class="login-sub">Ingresa con tu cuenta de administrador</p>
+        <form id="login-form" onsubmit="doLogin(event)">
+            <div class="field">
+                <label><i class="fas fa-envelope"></i> Correo</label>
+                <input type="email" id="login-email" required placeholder="admin@nean.com">
+            </div>
+            <div class="field">
+                <label><i class="fas fa-key"></i> Contraseña</label>
+                <input type="password" id="login-password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn-login" id="login-btn">
+                <i class="fas fa-sign-in-alt"></i> Ingresar
+            </button>
+            <p class="login-error hidden" id="login-error">Credenciales incorrectas</p>
+        </form>
+        <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Volver a la app</a>
+    </div>
+</div>
+
+<!-- ── PANEL PRINCIPAL ────────────────────────────────────── -->
+<div id="admin-panel" class="admin-panel hidden">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <span>NE&AN</span>
+            <small>Admin</small>
+        </div>
+        <nav class="sidebar-nav">
+            <button class="nav-item active" onclick="showSection('pedidos')">
+                <i class="fas fa-receipt"></i> Pedidos
+            </button>
+            <button class="nav-item" onclick="showSection('productos')">
+                <i class="fas fa-hamburger"></i> Productos
+            </button>
+            <button class="nav-item" onclick="showSection('negocio')">
+                <i class="fas fa-store"></i> Mi Negocio
+            </button>
+        </nav>
+        <button class="btn-logout" onclick="doLogout()">
+            <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+        </button>
+    </aside>
+
+    <!-- Main content -->
+    <main class="admin-main">
+
+        <!-- ── SECCIÓN PEDIDOS ── -->
+        <section id="sec-pedidos" class="section active">
+            <div class="section-header">
+                <h2><i class="fas fa-receipt"></i> Pedidos</h2>
+                <button class="btn-icon" onclick="refreshPedidos()" title="Actualizar">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="filters">
+                <button class="filter active" data-f="all"        onclick="setFilter(this,'all')">Todos</button>
+                <button class="filter"         data-f="nuevo"     onclick="setFilter(this,'nuevo')">Nuevos</button>
+                <button class="filter"         data-f="preparando" onclick="setFilter(this,'preparando')">Preparando</button>
+                <button class="filter"         data-f="listo"     onclick="setFilter(this,'listo')">Listos</button>
+                <button class="filter"         data-f="entregado" onclick="setFilter(this,'entregado')">Entregados</button>
+            </div>
+            <div id="pedidos-list" class="cards-list">
+                <div class="empty"><i class="fas fa-spinner fa-spin"></i><p>Cargando...</p></div>
+            </div>
+        </section>
+
+        <!-- ── SECCIÓN PRODUCTOS ── -->
+        <section id="sec-productos" class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-hamburger"></i> Productos</h2>
+                <button class="btn-primary" onclick="openProductForm()">
+                    <i class="fas fa-plus"></i> Nuevo producto
+                </button>
+            </div>
+            <div id="productos-list" class="products-grid">
+                <div class="empty"><i class="fas fa-spinner fa-spin"></i><p>Cargando...</p></div>
+            </div>
+        </section>
+
+        <!-- ── SECCIÓN NEGOCIO ── -->
+        <section id="sec-negocio" class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-store"></i> Información del Negocio</h2>
+            </div>
+            <form id="negocio-form" onsubmit="saveNegocio(event)" class="negocio-form">
+                <div class="form-grid">
+                    <div class="field">
+                        <label><i class="fas fa-store"></i> Nombre del negocio</label>
+                        <input type="text" id="neg-nombre" placeholder="Comidas Rápidas NE&AN">
+                    </div>
+                    <div class="field">
+                        <label><i class="fas fa-map-marker-alt"></i> Ubicación</label>
+                        <input type="text" id="neg-ubicacion" placeholder="La Aurora, Cesar">
+                    </div>
+                    <div class="field">
+                        <label><i class="fas fa-phone"></i> Teléfono 1</label>
+                        <input type="tel" id="neg-tel1" placeholder="3156848558">
+                    </div>
+                    <div class="field">
+                        <label><i class="fas fa-phone"></i> Teléfono 2</label>
+                        <input type="tel" id="neg-tel2" placeholder="3226144727">
+                    </div>
+                    <div class="field">
+                        <label><i class="fas fa-clock"></i> Días de atención</label>
+                        <input type="text" id="neg-dias" placeholder="Viernes, Sábados y Domingo">
+                    </div>
+                    <div class="field">
+                        <label><i class="fas fa-clock"></i> Horario</label>
+                        <input type="text" id="neg-horario" placeholder="05:00 PM - 11:00 PM">
+                    </div>
+                    <div class="field full">
+                        <label><i class="fas fa-comment"></i> Mensaje de bienvenida</label>
+                        <textarea id="neg-bienvenida" rows="2" placeholder="¡Bienvenido! Pide tu comida favorita..."></textarea>
+                    </div>
+                    <div class="field full">
+                        <label><i class="fas fa-motorcycle"></i> Texto de domicilio</label>
+                        <input type="text" id="neg-domicilio" placeholder="Domicilio Gratis">
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save"></i> Guardar cambios
+                </button>
+            </form>
+        </section>
+
+    </main>
+</div>
+
+<!-- ── MODAL PRODUCTO ─────────────────────────────────────── -->
+<div id="product-modal" class="overlay hidden">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="modal-title">Nuevo Producto</h3>
+            <button onclick="closeProductForm()"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="product-form" onsubmit="saveProduct(event)">
+            <input type="hidden" id="prod-id">
+            <input type="hidden" id="prod-img-url">
+
+            <div class="field">
+                <label>Nombre del producto *</label>
+                <input type="text" id="prod-nombre" required placeholder="Ej: Choriespecial">
+            </div>
+            <div class="field">
+                <label>Descripción *</label>
+                <textarea id="prod-desc" required rows="3" placeholder="Describe el producto..."></textarea>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label>Precio (COP) *</label>
+                    <input type="number" id="prod-precio" required placeholder="15000" min="0">
+                </div>
+                <div class="field">
+                    <label>Badge (opcional)</label>
+                    <input type="text" id="prod-badge" placeholder="Ej: Nuevo, Especial">
+                </div>
+            </div>
+            <div class="field">
+                <label>Imagen del producto</label>
+                <div class="img-upload-area" id="img-upload-area" onclick="document.getElementById('prod-img-file').click()">
+                    <img id="img-preview" src="" alt="" class="hidden">
+                    <div id="img-placeholder">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Toca para subir imagen</p>
+                        <small>JPG, PNG — máx 2MB</small>
+                    </div>
+                </div>
+                <input type="file" id="prod-img-file" accept="image/*" onchange="previewImage(event)" style="display:none">
+            </div>
+            <div class="field">
+                <label>Estado</label>
+                <select id="prod-activo">
+                    <option value="true">Activo (visible en el menú)</option>
+                    <option value="false">Inactivo (oculto)</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeProductForm()">Cancelar</button>
+                <button type="submit" class="btn-primary" id="save-prod-btn">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── TOAST ──────────────────────────────────────────────── -->
+<div id="toast" class="toast hidden">
+    <i class="fas fa-check-circle"></i>
+    <span id="toast-msg">Guardado</span>
+</div>
+
+<script src="js/admin.js" type="module"></script>
+</body>
+</html>
