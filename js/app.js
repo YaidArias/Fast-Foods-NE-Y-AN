@@ -287,8 +287,8 @@ async function sendOrder(event) {
         const ordersRef = window.firebaseCollection(window.db, 'orders');
         await window.firebaseAddDoc(ordersRef, orderData);
         
-        // Notificación ntfy (ya existente)
-        sendNtfyNotification(orderData);
+        // Notificación ntfy
+        await sendNtfyNotification(orderData);
         
         // Guardar en localStorage para "Mis Pedidos"
         let myOrders = JSON.parse(localStorage.getItem('myOrders') || '[]');
@@ -308,35 +308,64 @@ async function sendOrder(event) {
     }
 }
 
-function sendNtfyNotification(orderData) {
+// ============================================
+// NTFY NOTIFICACIÓN - CORREGIDO
+// ============================================
+async function sendNtfyNotification(orderData) {
     const ntfyTopic = 'nean-pedidos-sq-2026';
-    
-    const message = 
-        '🔔 NUEVO PEDIDO NE&AN\n' +
-        '📋 Orden: ' + orderData.orderId + '\n' +
-        '👤 Cliente: ' + orderData.customerName + '\n' +
-        '📱 Tel: ' + orderData.customerPhone + '\n' +
-        '📍 Dir: ' + orderData.customerAddress + '\n' +
-        '💳 Pago: ' + orderData.paymentMethod + '\n\n' +
-        '🛒 PRODUCTOS:\n' +
-        orderData.items.map(i => '• ' + i.quantity + 'x ' + i.name + ' - $' + i.price.toLocaleString('es-CO')).join('\n') +
-        '\n\n💰 TOTAL: $' + orderData.total.toLocaleString('es-CO') + '\n' +
-        (orderData.notes ? '📝 Notas: ' + orderData.notes + '\n' : '');
-    
-    fetch('https://ntfy.sh/' + ntfyTopic, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: message,
-        headers: {
-            'Title': '🔔 Nuevo Pedido NE&AN',
-            'Priority': 'high',
-            'Tags': 'shopping_cart,fire'
+
+    const itemsTexto = orderData.items
+        .map(i => `• ${i.quantity}x ${i.name} - $${i.price.toLocaleString('es-CO')}`)
+        .join('\n');
+
+    const mensaje =
+        `🔔 NUEVO PEDIDO NE&AN\n` +
+        `📋 Orden: ${orderData.orderId}\n` +
+        `👤 Cliente: ${orderData.customerName}\n` +
+        `📱 Tel: ${orderData.customerPhone}\n` +
+        `📍 Dir: ${orderData.customerAddress}\n` +
+        `💳 Pago: ${orderData.paymentMethod}\n\n` +
+        `🛒 PRODUCTOS:\n${itemsTexto}\n\n` +
+        `💰 TOTAL: $${orderData.total.toLocaleString('es-CO')}` +
+        (orderData.notes ? `\n📝 Notas: ${orderData.notes}` : '');
+
+    // Intentos en orden: primero sin cors, luego con image proxy
+    const intentos = [
+        // Intento 1: fetch directo con cors
+        () => fetch(`https://ntfy.sh/${ntfyTopic}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain;charset=UTF-8',
+                'Title': '🔔 Nuevo Pedido NE&AN',
+                'Priority': 'high',
+                'Tags': 'shopping_cart,fire'
+            },
+            body: mensaje
+        }),
+        // Intento 2: fetch con no-cors (fallback)
+        () => fetch(`https://ntfy.sh/${ntfyTopic}`, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Title': '🔔 Nuevo Pedido NE&AN',
+                'Priority': 'high',
+                'Tags': 'shopping_cart,fire'
+            },
+            body: mensaje
+        })
+    ];
+
+    for (const intento of intentos) {
+        try {
+            await intento();
+            console.log('✅ Notificación ntfy enviada');
+            return;
+        } catch (err) {
+            console.log('⚠️ Intento fallido, probando siguiente...', err.message);
         }
-    }).then(() => {
-        console.log('Notificación ntfy enviada');
-    }).catch((err) => {
-        console.log('Error ntfy:', err);
-    });
+    }
+
+    console.log('❌ No se pudo enviar notificación ntfy');
 }
 
 function showSuccessModal(orderId) {
@@ -463,7 +492,7 @@ async function adminLogin(event) {
     
     try {
         await window.firebaseSignIn(window.auth, email, password);
-        await activarNotificacionesAdmin(); // ← NUEVO: activa notificaciones push
+        await activarNotificacionesAdmin();
         closeAdminLogin();
         showAdminPanel();
     } catch (error) {
@@ -605,22 +634,20 @@ window.firebaseOnAuthStateChanged(window.auth, (user) => {
 // ============================================
 // NOTIFICACIONES PUSH PARA ADMIN (100% gratis)
 // ============================================
-let notificacionesActivas  = false;
-let adminPushListener      = null;
-let pedidosYaVistos        = new Set();
+let notificacionesActivas = false;
+let adminPushListener     = null;
+let pedidosYaVistos       = new Set();
 
 async function activarNotificacionesAdmin() {
     if (!('Notification' in window)) return;
-
     const permiso = await Notification.requestPermission();
     if (permiso !== 'granted') {
-        showToast('⚠️ Activa las notificaciones del navegador para recibir alertas');
+        showToast('⚠️ Activa las notificaciones del navegador');
         return;
     }
-
     notificacionesActivas = true;
     iniciarListenerNuevosPedidos();
-    showToast('🔔 Notificaciones de pedidos activadas');
+    showToast('🔔 Notificaciones activadas');
 }
 
 function iniciarListenerNuevosPedidos() {
@@ -628,36 +655,23 @@ function iniciarListenerNuevosPedidos() {
 
     const ordersRef = window.firebaseCollection(window.db, 'orders');
     const q = window.firebaseQuery(ordersRef, window.firebaseOrderBy('createdAt', 'desc'));
-
     let primeraVez = true;
 
     adminPushListener = window.firebaseOnSnapshot(q, (snapshot) => {
-        // Primera carga: solo registrar IDs existentes, no notificar
         if (primeraVez) {
             snapshot.forEach(doc => pedidosYaVistos.add(doc.id));
             primeraVez = false;
             return;
         }
-
-        // Detectar pedidos nuevos
         snapshot.docChanges().forEach((change) => {
             if (change.type !== 'added') return;
-
             const docId = change.doc.id;
             if (pedidosYaVistos.has(docId)) return;
             pedidosYaVistos.add(docId);
-
             const pedido = change.doc.data();
-
-            // Solo notificar si el pedido es de los últimos 30 segundos
-            const ahora    = Date.now();
-            const creado   = pedido.createdAt?.toDate
-                ? pedido.createdAt.toDate().getTime()
-                : ahora;
-
-            if (ahora - creado < 30000) {
-                mostrarNotificacionPedido(pedido);
-            }
+            const ahora  = Date.now();
+            const creado = pedido.createdAt?.toDate ? pedido.createdAt.toDate().getTime() : ahora;
+            if (ahora - creado < 30000) mostrarNotificacionPedido(pedido);
         });
     });
 }
@@ -670,7 +684,6 @@ async function mostrarNotificacionPedido(pedido) {
         total:        pedido.total        || 0
     };
 
-    // Intentar con Service Worker (funciona en background)
     if ('serviceWorker' in navigator) {
         try {
             const swReg = await navigator.serviceWorker.ready;
@@ -678,17 +691,13 @@ async function mostrarNotificacionPedido(pedido) {
                 swReg.active.postMessage({ type: 'NUEVO_PEDIDO', payload });
                 return;
             }
-        } catch (e) {
-            console.log('SW no disponible, usando Notification directa');
-        }
+        } catch (e) {}
     }
 
-    // Fallback: notificación directa del navegador
     if (Notification.permission === 'granted') {
         const itemsResumen = payload.items.length
             ? payload.items.map(i => `${i.quantity}x ${i.name}`).join(', ')
             : 'Ver detalles';
-
         new Notification(`🍔 Nuevo Pedido - ${payload.orderId}`, {
             body: `${payload.customerName} pidió: ${itemsResumen}\nTotal: $${Number(payload.total).toLocaleString('es-CO')}`,
             icon: '/images/icon-192.png',
@@ -723,7 +732,7 @@ document.addEventListener('click', function(e) {
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-        closeModal(); closeCart(); closeCheckout(); closeSuccess(); 
+        closeModal(); closeCart(); closeCheckout(); closeSuccess();
         closeMyOrders(); closeAdminLogin(); closeAdminPanel();
     }
 });
@@ -734,7 +743,7 @@ document.addEventListener('keydown', function(e) {
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('SW registrado correctamente'))
+            .then(reg => console.log('SW registrado'))
             .catch(err => console.log('SW falló:', err));
     });
 }
@@ -742,28 +751,28 @@ if ('serviceWorker' in navigator) {
 // ============================================
 // EXPONER FUNCIONES GLOBALMENTE
 // ============================================
-window.openProductModal          = openProductModal;
-window.closeModal                = closeModal;
-window.changeQuantity            = changeQuantity;
-window.addToCartFromModal        = addToCartFromModal;
-window.showCart                  = showCart;
-window.closeCart                 = closeCart;
-window.updateCartItem            = updateCartItem;
-window.removeCartItem            = removeCartItem;
-window.checkout                  = checkout;
-window.closeCheckout             = closeCheckout;
-window.sendOrder                 = sendOrder;
-window.closeSuccess              = closeSuccess;
-window.showMyOrders              = showMyOrders;
-window.closeMyOrders             = closeMyOrders;
-window.showAdminLogin            = showAdminLogin;
-window.closeAdminLogin           = closeAdminLogin;
-window.adminLogin                = adminLogin;
-window.closeAdminPanel           = closeAdminPanel;
-window.refreshOrders             = refreshOrders;
-window.filterOrders              = filterOrders;
-window.updateOrderStatus         = updateOrderStatus;
-window.deleteOrder               = deleteOrder;
+window.openProductModal           = openProductModal;
+window.closeModal                 = closeModal;
+window.changeQuantity             = changeQuantity;
+window.addToCartFromModal         = addToCartFromModal;
+window.showCart                   = showCart;
+window.closeCart                  = closeCart;
+window.updateCartItem             = updateCartItem;
+window.removeCartItem             = removeCartItem;
+window.checkout                   = checkout;
+window.closeCheckout              = closeCheckout;
+window.sendOrder                  = sendOrder;
+window.closeSuccess               = closeSuccess;
+window.showMyOrders               = showMyOrders;
+window.closeMyOrders              = closeMyOrders;
+window.showAdminLogin             = showAdminLogin;
+window.closeAdminLogin            = closeAdminLogin;
+window.adminLogin                 = adminLogin;
+window.closeAdminPanel            = closeAdminPanel;
+window.refreshOrders              = refreshOrders;
+window.filterOrders               = filterOrders;
+window.updateOrderStatus          = updateOrderStatus;
+window.deleteOrder                = deleteOrder;
 window.activarNotificacionesAdmin = activarNotificacionesAdmin;
 window.detenerNotificacionesAdmin = detenerNotificacionesAdmin;
 
