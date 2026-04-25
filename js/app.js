@@ -415,35 +415,86 @@ function closeMyOrders() {
     if (myOrdersUnsubscribe) { myOrdersUnsubscribe(); myOrdersUnsubscribe = null; }
 }
 
-function loadMyOrders() {
+async function loadMyOrders() {
     const myOrderIds = JSON.parse(localStorage.getItem('myOrders') || '[]');
     const ordersList = document.getElementById('orders-list');
+
     if (myOrderIds.length === 0) {
         ordersList.innerHTML = `<div class="orders-empty"><i class="fas fa-receipt"></i><p>No tienes pedidos aún</p></div>`;
         return;
     }
-    const q = window.firebaseQuery(window.firebaseCollection(window.db,'orders'), window.firebaseOrderBy('createdAt','desc'));
-    myOrdersUnsubscribe = window.firebaseOnSnapshot(q, snap => {
+
+    try {
+        // Usar getDocs (compatible con Safari/iPhone) con timeout de 8 segundos
+        const q = window.firebaseQuery(
+            window.firebaseCollection(window.db, 'orders'),
+            window.firebaseOrderBy('createdAt', 'desc')
+        );
+
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 8000)
+        );
+
+        const snapshot = await Promise.race([
+            window.firebaseGetDocs(q),
+            timeoutPromise
+        ]);
+
         const orders = [];
-        snap.forEach(d => { const data = d.data(); if (myOrderIds.includes(data.orderId)) orders.push({ id: d.id, ...data }); });
+        snapshot.forEach(d => {
+            const data = d.data();
+            if (myOrderIds.includes(data.orderId)) orders.push({ id: d.id, ...data });
+        });
+
         if (orders.length === 0) {
             ordersList.innerHTML = `<div class="orders-empty"><i class="fas fa-receipt"></i><p>No tienes pedidos aún</p></div>`;
             return;
         }
-        ordersList.innerHTML = orders.map(order => `
-            <div class="order-card">
-                <div class="order-header">
-                    <span class="order-id">${order.orderId}</span>
-                    <span class="order-status status-${order.status}">${getStatusLabel(order.status)}</span>
-                </div>
-                <div class="order-items">${order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}</div>
-                <div class="order-total">${formatPrice(order.total)}</div>
-                <div class="order-meta">
-                    <span><i class="fas fa-calendar"></i> ${formatDate(order.createdAt)}</span>
-                    <span><i class="fas fa-credit-card"></i> ${order.paymentMethod}</span>
-                </div>
-            </div>`).join('');
-    });
+
+        renderMyOrders(orders, ordersList);
+
+        // Activar listener en tiempo real después de carga inicial
+        try {
+            if (myOrdersUnsubscribe) myOrdersUnsubscribe();
+            myOrdersUnsubscribe = window.firebaseOnSnapshot(q, snap => {
+                const updated = [];
+                snap.forEach(d => {
+                    const data = d.data();
+                    if (myOrderIds.includes(data.orderId)) updated.push({ id: d.id, ...data });
+                });
+                if (updated.length > 0) renderMyOrders(updated, ordersList);
+            });
+        } catch (e) {
+            console.log('Listener tiempo real no disponible, usando modo estático');
+        }
+
+    } catch (error) {
+        console.error('Error cargando pedidos:', error);
+        ordersList.innerHTML = `
+            <div class="orders-empty">
+                <i class="fas fa-exclamation-circle"></i>
+                <p>Error al cargar pedidos</p>
+                <button onclick="loadMyOrders()" style="margin-top:12px;padding:8px 16px;background:#D35400;color:white;border:none;border-radius:8px;cursor:pointer;font-family:inherit">
+                    Reintentar
+                </button>
+            </div>`;
+    }
+}
+
+function renderMyOrders(orders, container) {
+    container.innerHTML = orders.map(order => `
+        <div class="order-card">
+            <div class="order-header">
+                <span class="order-id">${order.orderId}</span>
+                <span class="order-status status-${order.status}">${getStatusLabel(order.status)}</span>
+            </div>
+            <div class="order-items">${order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}</div>
+            <div class="order-total">${formatPrice(order.total)}</div>
+            <div class="order-meta">
+                <span><i class="fas fa-calendar"></i> ${formatDate(order.createdAt)}</span>
+                <span><i class="fas fa-credit-card"></i> ${order.paymentMethod}</span>
+            </div>
+        </div>`).join('');
 }
 
 function getStatusLabel(status) {
@@ -586,6 +637,7 @@ window.showAdminLogin             = showAdminLogin;
 window.closeAdminLogin            = closeAdminLogin;
 window.adminLogin                 = adminLogin;
 window.activarNotificacionesAdmin = activarNotificacionesAdmin;
+window.loadMyOrders               = loadMyOrders;
 
 // ============================================
 // INIT
