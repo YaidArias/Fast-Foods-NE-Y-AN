@@ -246,354 +246,82 @@ body { font-family:'Poppins',sans-serif; background:var(--bg); color:var(--text)
 /* ── UTILS ───────────────────────────────── */
 .hidden { display:none !important; }
 
-/* ── RESPONSIVE ──────────────────────────── */
+/* ── RESPONSIVE ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
 @media (max-width:768px) {
     :root { --sidebar-w:0px; }
-    .sidebar { width:100%; height:auto; position:relative; flex-direction:row; flex-wrap:wrap; padding:12px; gap:8px; }
-    .sidebar-logo { display:none; }
-    .sidebar-nav { flex-direction:row; flex:none; }
-    .btn-logout { padding:10px 12px; font-size:0.8rem; }
-    .admin-main { margin-left:0; padding:16px; max-width:100%; }
+
     .admin-panel { flex-direction:column; }
-    .form-grid { grid-template-columns:1fr; }
-    .form-row { grid-template-columns:1fr; }
-    .products-grid { grid-template-columns:1fr; }
-}
 
-/* ============================================
-   AGREGAR AL FINAL DE css/admin.css
-   Control de estado Abierto/Cerrado
-   ============================================ */
+    /* Sidebar horizontal en móvil */
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        flex-direction: column;
+        padding: 10px 12px;
+        gap: 6px;
+    }
 
-.estado-negocio-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--white);
-    border-radius: var(--radius);
-    padding: 20px 24px;
-    box-shadow: var(--shadow);
-    margin-bottom: 24px;
-    border-left: 5px solid var(--border);
-    flex-wrap: wrap;
-    gap: 16px;
-    transition: border-color 0.3s;
-}
+    .sidebar-logo { display:none; }
 
-.estado-negocio-card.abierto   { border-left-color: #27AE60; }
-.estado-negocio-card.cerrado   { border-left-color: #E74C3C; }
-.estado-negocio-card.automatico { border-left-color: #F39C12; }
+    /* Nav con scroll horizontal */
+    .sidebar-nav {
+        flex-direction: row;
+        flex: none;
+        overflow-x: auto;
+        gap: 6px;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        width: 100%;
+    }
+    .sidebar-nav::-webkit-scrollbar { display: none; }
 
-.estado-titulo {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--secondary);
-    margin-bottom: 4px;
-}
+    .nav-item {
+        flex-shrink: 0;
+        padding: 8px 14px;
+        font-size: 0.82rem;
+        white-space: nowrap;
+        border-radius: 20px;
+    }
 
-.estado-subtitulo {
-    font-size: 0.85rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
+    .btn-logout {
+        width: 100%;
+        justify-content: center;
+        padding: 8px 12px;
+        font-size: 0.82rem;
+        border-radius: 8px;
+    }
 
-.estado-negocio-card.abierto .estado-subtitulo   { color: #27AE60; }
-.estado-negocio-card.cerrado .estado-subtitulo   { color: #E74C3C; }
-.estado-negocio-card.automatico .estado-subtitulo { color: #F39C12; }
+    .admin-main {
+        margin-left: 0;
+        padding: 12px;
+        max-width: 100%;
+    }
 
-.estado-toggle {
-    display: flex;
-    gap: 10px;
-}
+    .form-grid { grid-template-columns: 1fr; }
+    .form-row  { grid-template-columns: 1fr; }
+    .products-grid { grid-template-columns: 1fr; }
 
-.btn-estado-toggle {
-    padding: 10px 18px;
-    border-radius: var(--radius);
-    font-size: 0.85rem;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'Poppins', sans-serif;
-    transition: opacity 0.2s;
-}
-
-.btn-estado-toggle:hover { opacity: 0.85; }
-
-.btn-abrir  { background: #E8F5E9; color: #27AE60; }
-.btn-cerrar { background: #FFEBEE; color: #C62828; }
-
-/* ── Banner cerrado en la app (style.css) ── */
-/* AGREGAR TAMBIÉN AL FINAL DE css/style.css */
-#banner-cerrado {
-    animation: slideDown 0.4s ease;
-}
-
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ============================================
-   AGREGAR AL FINAL DE css/admin.css
-   Estilos para sección Estadísticas
-   ============================================ */
-
-/* ── Selector de período ─────────────────── */
-.stats-select {
-    border: 2px solid var(--border);
-    border-radius: var(--radius);
-    padding: 8px 12px;
-    font-size: 0.85rem;
-    font-family: 'Poppins', sans-serif;
-    color: var(--text);
-    background: var(--white);
-    cursor: pointer;
-}
-.stats-select:focus { outline: none; border-color: var(--primary); }
-
-/* ── Cards resumen ───────────────────────── */
-.stats-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 28px;
-}
-
-.stat-card {
-    background: var(--white);
-    border-radius: var(--radius);
-    padding: 20px;
-    box-shadow: var(--shadow);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.stat-icon {
-    width: 52px; height: 52px;
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.4rem;
-    flex-shrink: 0;
-}
-
-.stat-value {
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: var(--secondary);
-    line-height: 1;
-    margin-bottom: 4px;
-}
-
-.stat-label {
-    font-size: 0.78rem;
-    color: var(--text-light);
-    font-weight: 500;
-}
-
-/* ── Secciones ───────────────────────────── */
-.stats-section {
-    background: var(--white);
-    border-radius: var(--radius);
-    padding: 24px;
-    box-shadow: var(--shadow);
-    margin-bottom: 20px;
-}
-
-.stats-section-title {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--secondary);
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.stats-section-title i { color: var(--primary); }
-
-/* ── Gráfica de barras ───────────────────── */
-.stats-chart-wrap {
-    overflow-x: auto;
-    padding-bottom: 8px;
-}
-
-.stats-chart {
-    display: flex;
-    align-items: flex-end;
-    gap: 12px;
-    height: 160px;
-    min-width: 100%;
-    padding: 0 4px;
-}
-
-.chart-bar-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    flex: 1;
-    min-width: 60px;
-    height: 100%;
-    justify-content: flex-end;
-}
-
-.chart-bar-label {
-    font-size: 0.65rem;
-    color: var(--text-light);
-    font-weight: 600;
-    text-align: center;
-}
-
-.chart-bar-container {
-    width: 100%;
-    height: 100px;
-    display: flex;
-    align-items: flex-end;
-}
-
-.chart-bar {
-    width: 100%;
-    background: linear-gradient(180deg, var(--primary), var(--primary-dark));
-    border-radius: 6px 6px 0 0;
-    min-height: 4px;
-    transition: height 0.5s ease;
-}
-
-.chart-bar-day {
-    font-size: 0.7rem;
-    color: var(--text-light);
-    font-weight: 600;
-    text-align: center;
-    white-space: nowrap;
-}
-
-/* ── Productos más vendidos ──────────────── */
-.stats-productos {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.prod-stat-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.prod-stat-rank {
-    font-size: 1.2rem;
-    width: 32px;
-    text-align: center;
-    flex-shrink: 0;
-}
-
-.prod-stat-info { flex: 1; }
-
-.prod-stat-name {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--secondary);
-    margin-bottom: 6px;
-}
-
-.prod-stat-bar-wrap {
-    background: var(--bg);
-    border-radius: 20px;
-    height: 8px;
-    overflow: hidden;
-}
-
-.prod-stat-bar {
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    height: 100%;
-    border-radius: 20px;
-    transition: width 0.6s ease;
-}
-
-.prod-stat-nums { text-align: right; flex-shrink: 0; }
-
-.prod-stat-qty {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--primary);
-}
-
-.prod-stat-ing {
-    font-size: 0.75rem;
-    color: var(--text-light);
-}
-
-/* ── Métodos de pago ─────────────────────── */
-.stats-pagos {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.pago-stat-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.pago-stat-name {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--secondary);
-    width: 100px;
-    flex-shrink: 0;
-}
-
-.pago-stat-bar-wrap {
-    flex: 1;
-    background: var(--bg);
-    border-radius: 20px;
-    height: 10px;
-    overflow: hidden;
-}
-
-.pago-stat-bar {
-    background: linear-gradient(90deg, #1565C0, #42A5F5);
-    height: 100%;
-    border-radius: 20px;
-    transition: width 0.6s ease;
-}
-
-.pago-stat-pct {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--text-light);
-    width: 80px;
-    text-align: right;
-    flex-shrink: 0;
-}
-
-/* ── Responsive ──────────────────────────── */
-@media (max-width: 768px) {
+    /* Stats responsive */
     .stats-cards { grid-template-columns: 1fr 1fr; }
-    .stat-value  { font-size: 1.1rem; }
+    .stat-value  { font-size: 1rem; }
+
+    /* Pedidos responsive */
+    .pedido-bottom { flex-direction: column; align-items: flex-start; }
+    .pedido-actions { width: 100%; }
+
+    /* Section header responsive */
+    .section-header { flex-wrap: wrap; gap: 10px; }
+    .section-header h2 { font-size: 1.2rem; }
+
+    /* Filtros responsive */
+    .filters { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; scrollbar-width: none; }
+    .filters::-webkit-scrollbar { display: none; }
+    .filter { flex-shrink: 0; }
 }
 
-/* ============================================
-   AGREGAR AL FINAL DE css/admin.css
-   Botón WhatsApp domiciliario en pedidos
-   ============================================ */
-
-.btn-whatsapp-admin {
-    background: #25D366 !important;
-    color: white !important;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn-whatsapp-admin:hover {
-    background: #1da851 !important;
-    opacity: 1 !important;
+@media (max-width: 380px) {
+    .stats-cards { grid-template-columns: 1fr; }
+    .nav-item { font-size: 0.75rem; padding: 7px 10px; }
 }
