@@ -181,7 +181,7 @@ function renderPedidos() {
             </div>
             <div class="pedido-info"><i class="fas fa-user"></i> ${p.customerName} &nbsp;|&nbsp; <i class="fas fa-phone"></i> <a href="tel:${p.customerPhone}" style="color:var(--primary)">${p.customerPhone}</a></div>
             <div class="pedido-info"><i class="fas fa-map-marker-alt"></i> ${p.customerAddress}</div>
-            ${p.notes ? `<div class="pedido-info"><i class="fas fa-sticky-note"></i> ${p.notes}</div>` : ''}
+            ${p.notes ? '<div class="pedido-info"><i class="fas fa-sticky-note"></i> ' + p.notes + '</div>' : ''}
             <div class="pedido-items">
                 ${p.items.map(i => `• ${i.quantity}x ${i.name} — $${i.price.toLocaleString('es-CO')}`).join('<br>')}
             </div>
