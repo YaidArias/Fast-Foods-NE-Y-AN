@@ -185,6 +185,7 @@ function renderPedidos() {
                     ${p.status !== 'encamino'   ? `<button class="btn-estado btn-encamino"   onclick="setEstado('${p.id}','encamino')">En Camino</button>` : ''}
                     ${p.status !== 'entregado'  ? `<button class="btn-estado btn-entregado"  onclick="setEstado('${p.id}','entregado')">Entregado</button>` : ''}
                     <button class="btn-estado btn-eliminar" onclick="deletePedido('${p.id}')"><i class="fas fa-trash"></i></button>
+                    <button class="btn-estado btn-whatsapp-admin" onclick="compartirPedidoWhatsApp('${p.id}')" title="Enviar al domiciliario"><i class="fab fa-whatsapp"></i> Domiciliario</button>
                 </div>
             </div>
         </div>
@@ -433,6 +434,30 @@ async function cargarEstadoNegocio() {
 }
 
 window.reproducirSonidoPedido = reproducirSonidoPedido;
+
+window.compartirPedidoWhatsApp = function(orderId) {
+    const pedido = allPedidos.find(p => p.id === orderId);
+    if (!pedido) return;
+
+    const itemsTexto = (pedido.items || [])
+        .map(i => `  - ${i.quantity}x ${i.name} ($${(i.price || 0).toLocaleString('es-CO')})`)
+        .join('%0A');
+
+    const notas = pedido.notes ? `%0A%F0%9F%93%9D Notas: ${pedido.notes}` : '';
+
+    const mensaje =
+        `%F0%9F%94%94 *NUEVO PEDIDO NE%26AN*%0A%0A` +
+        `%F0%9F%93%8B *Orden:* ${pedido.orderId}%0A` +
+        `%F0%9F%91%A4 *Cliente:* ${pedido.customerName}%0A` +
+        `%F0%9F%93%B1 *Tel:* ${pedido.customerPhone}%0A` +
+        `%F0%9F%93%8D *Direcci%C3%B3n:* ${pedido.customerAddress}%0A` +
+        `%F0%9F%92%B3 *Pago:* ${pedido.paymentMethod}%0A%0A` +
+        `%F0%9F%9B%92 *PRODUCTOS:*%0A${itemsTexto}%0A%0A` +
+        `%F0%9F%92%B0 *TOTAL: $${(pedido.total || 0).toLocaleString('es-CO')}*` +
+        notas;
+
+    window.open('https://wa.me/?text=' + mensaje, '_blank');
+};
 
 window.toggleEstadoNegocio = async function(abierto) {
     try {

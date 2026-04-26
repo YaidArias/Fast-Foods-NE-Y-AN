@@ -579,3 +579,21 @@ body { font-family:'Poppins',sans-serif; background:var(--bg); color:var(--text)
     .stats-cards { grid-template-columns: 1fr 1fr; }
     .stat-value  { font-size: 1.1rem; }
 }
+
+/* ============================================
+   AGREGAR AL FINAL DE css/admin.css
+   Botón WhatsApp domiciliario en pedidos
+   ============================================ */
+
+.btn-whatsapp-admin {
+    background: #25D366 !important;
+    color: white !important;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-whatsapp-admin:hover {
+    background: #1da851 !important;
+    opacity: 1 !important;
+}
