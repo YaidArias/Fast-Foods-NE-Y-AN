@@ -337,3 +337,245 @@ body { font-family:'Poppins',sans-serif; background:var(--bg); color:var(--text)
     from { opacity: 0; transform: translateY(-10px); }
     to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ============================================
+   AGREGAR AL FINAL DE css/admin.css
+   Estilos para sección Estadísticas
+   ============================================ */
+
+/* ── Selector de período ─────────────────── */
+.stats-select {
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    font-family: 'Poppins', sans-serif;
+    color: var(--text);
+    background: var(--white);
+    cursor: pointer;
+}
+.stats-select:focus { outline: none; border-color: var(--primary); }
+
+/* ── Cards resumen ───────────────────────── */
+.stats-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.stat-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.stat-icon {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.stat-value {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--secondary);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 0.78rem;
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+/* ── Secciones ───────────────────────────── */
+.stats-section {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+.stats-section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--secondary);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stats-section-title i { color: var(--primary); }
+
+/* ── Gráfica de barras ───────────────────── */
+.stats-chart-wrap {
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.stats-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    height: 160px;
+    min-width: 100%;
+    padding: 0 4px;
+}
+
+.chart-bar-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 60px;
+    height: 100%;
+    justify-content: flex-end;
+}
+
+.chart-bar-label {
+    font-size: 0.65rem;
+    color: var(--text-light);
+    font-weight: 600;
+    text-align: center;
+}
+
+.chart-bar-container {
+    width: 100%;
+    height: 100px;
+    display: flex;
+    align-items: flex-end;
+}
+
+.chart-bar {
+    width: 100%;
+    background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+    border-radius: 6px 6px 0 0;
+    min-height: 4px;
+    transition: height 0.5s ease;
+}
+
+.chart-bar-day {
+    font-size: 0.7rem;
+    color: var(--text-light);
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* ── Productos más vendidos ──────────────── */
+.stats-productos {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.prod-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.prod-stat-rank {
+    font-size: 1.2rem;
+    width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.prod-stat-info { flex: 1; }
+
+.prod-stat-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--secondary);
+    margin-bottom: 6px;
+}
+
+.prod-stat-bar-wrap {
+    background: var(--bg);
+    border-radius: 20px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.prod-stat-bar {
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    height: 100%;
+    border-radius: 20px;
+    transition: width 0.6s ease;
+}
+
+.prod-stat-nums { text-align: right; flex-shrink: 0; }
+
+.prod-stat-qty {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.prod-stat-ing {
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+/* ── Métodos de pago ─────────────────────── */
+.stats-pagos {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pago-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pago-stat-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--secondary);
+    width: 100px;
+    flex-shrink: 0;
+}
+
+.pago-stat-bar-wrap {
+    flex: 1;
+    background: var(--bg);
+    border-radius: 20px;
+    height: 10px;
+    overflow: hidden;
+}
+
+.pago-stat-bar {
+    background: linear-gradient(90deg, #1565C0, #42A5F5);
+    height: 100%;
+    border-radius: 20px;
+    transition: width 0.6s ease;
+}
+
+.pago-stat-pct {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-light);
+    width: 80px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+/* ── Responsive ──────────────────────────── */
+@media (max-width: 768px) {
+    .stats-cards { grid-template-columns: 1fr 1fr; }
+    .stat-value  { font-size: 1.1rem; }
+}

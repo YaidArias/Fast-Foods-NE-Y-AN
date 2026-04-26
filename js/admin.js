@@ -128,6 +128,7 @@ window.showSection = function(name) {
     if (name === 'pedidos')   initPedidos();
     if (name === 'productos') initProductos();
     if (name === 'negocio')   cargarEstadoNegocio();
+    if (name === 'estadisticas') loadEstadisticas();
 };
 
 // ════════════════════════════════════════════
@@ -445,3 +446,147 @@ window.toggleEstadoNegocio = async function(abierto) {
         toast('Error al cambiar estado: ' + err.message, true);
     }
 };
+
+// ════════════════════════════════════════════
+// ESTADÍSTICAS
+// ════════════════════════════════════════════
+function getFechaInicio(periodo) {
+    const ahora = new Date();
+    switch (periodo) {
+        case 'hoy':
+            return new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+        case 'semana':
+            const d = new Date(ahora);
+            d.setDate(d.getDate() - 6);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        case 'mes':
+            return new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+        default:
+            return new Date(2024, 0, 1);
+    }
+}
+
+window.loadEstadisticas = async function() {
+    const periodo   = document.getElementById('stats-periodo')?.value || 'semana';
+    const fechaInicio = getFechaInicio(periodo);
+
+    try {
+        const snap = await window.fsGetDocs(
+            window.fsQuery(window.fsCollection(window.db, 'orders'), window.fsOrderBy('createdAt', 'desc'))
+        );
+
+        const pedidos = [];
+        snap.forEach(d => {
+            const p = d.data();
+            const fecha = p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+            if (fecha >= fechaInicio) pedidos.push({ id: d.id, ...p, fechaObj: fecha });
+        });
+
+        calcularStats(pedidos, periodo);
+
+    } catch (err) {
+        console.error('Error cargando estadísticas:', err);
+        toast('Error al cargar estadísticas', true);
+    }
+};
+
+function calcularStats(pedidos, periodo) {
+    // ── Cards resumen ──────────────────────────
+    const totalVentas    = pedidos.reduce((s, p) => s + (p.total || 0), 0);
+    const totalPedidos   = pedidos.length;
+    const promedio       = totalPedidos > 0 ? totalVentas / totalPedidos : 0;
+    const entregados     = pedidos.filter(p => p.status === 'entregado').length;
+
+    document.getElementById('stat-ventas').textContent    = formatPrice(totalVentas);
+    document.getElementById('stat-pedidos').textContent   = totalPedidos;
+    document.getElementById('stat-promedio').textContent  = formatPrice(promedio);
+    document.getElementById('stat-entregados').textContent = entregados;
+
+    // ── Ventas por día ─────────────────────────
+    const ventasPorDia = {};
+    pedidos.forEach(p => {
+        const dia = p.fechaObj.toLocaleDateString('es-CO', { weekday:'short', day:'2-digit', month:'2-digit' });
+        ventasPorDia[dia] = (ventasPorDia[dia] || 0) + (p.total || 0);
+    });
+
+    const maxVenta = Math.max(...Object.values(ventasPorDia), 1);
+    const chartEl  = document.getElementById('stats-chart');
+
+    if (Object.keys(ventasPorDia).length === 0) {
+        chartEl.innerHTML = '<div class="empty" style="padding:20px"><p>Sin datos en este período</p></div>';
+    } else {
+        chartEl.innerHTML = Object.entries(ventasPorDia).map(([dia, valor]) => {
+            const pct = Math.round((valor / maxVenta) * 100);
+            return `
+                <div class="chart-bar-wrap">
+                    <div class="chart-bar-label">${formatPrice(valor)}</div>
+                    <div class="chart-bar-container">
+                        <div class="chart-bar" style="height:${pct}%"></div>
+                    </div>
+                    <div class="chart-bar-day">${dia}</div>
+                </div>`;
+        }).join('');
+    }
+
+    // ── Productos más vendidos ─────────────────
+    const prodConteo = {};
+    pedidos.forEach(p => {
+        (p.items || []).forEach(item => {
+            if (!prodConteo[item.name]) prodConteo[item.name] = { cantidad: 0, ingresos: 0 };
+            prodConteo[item.name].cantidad += item.quantity || 1;
+            prodConteo[item.name].ingresos += (item.price || 0) * (item.quantity || 1);
+        });
+    });
+
+    const productosOrdenados = Object.entries(prodConteo)
+        .sort((a, b) => b[1].cantidad - a[1].cantidad)
+        .slice(0, 8);
+
+    const prodEl = document.getElementById('stats-productos');
+    if (productosOrdenados.length === 0) {
+        prodEl.innerHTML = '<div class="empty" style="padding:20px"><p>Sin datos en este período</p></div>';
+    } else {
+        const maxCantidad = productosOrdenados[0][1].cantidad;
+        prodEl.innerHTML = productosOrdenados.map(([nombre, datos], idx) => {
+            const pct = Math.round((datos.cantidad / maxCantidad) * 100);
+            const medallas = ['🥇','🥈','🥉'];
+            return `
+                <div class="prod-stat-row">
+                    <div class="prod-stat-rank">${medallas[idx] || (idx + 1)}</div>
+                    <div class="prod-stat-info">
+                        <div class="prod-stat-name">${nombre}</div>
+                        <div class="prod-stat-bar-wrap">
+                            <div class="prod-stat-bar" style="width:${pct}%"></div>
+                        </div>
+                    </div>
+                    <div class="prod-stat-nums">
+                        <div class="prod-stat-qty">${datos.cantidad} uds</div>
+                        <div class="prod-stat-ing">${formatPrice(datos.ingresos)}</div>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    // ── Métodos de pago ────────────────────────
+    const pagos = {};
+    pedidos.forEach(p => {
+        const metodo = p.paymentMethod || 'Otro';
+        pagos[metodo] = (pagos[metodo] || 0) + 1;
+    });
+
+    const pagosEl = document.getElementById('stats-pagos');
+    pagosEl.innerHTML = Object.entries(pagos)
+        .sort((a, b) => b[1] - a[1])
+        .map(([metodo, cantidad]) => {
+            const pct = totalPedidos > 0 ? Math.round((cantidad / totalPedidos) * 100) : 0;
+            return `
+                <div class="pago-stat-row">
+                    <span class="pago-stat-name">${metodo}</span>
+                    <div class="pago-stat-bar-wrap">
+                        <div class="pago-stat-bar" style="width:${pct}%"></div>
+                    </div>
+                    <span class="pago-stat-pct">${cantidad} (${pct}%)</span>
+                </div>`;
+        }).join('');
+}

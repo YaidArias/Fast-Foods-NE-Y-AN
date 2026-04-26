@@ -87,6 +87,9 @@
             <button class="nav-item" onclick="showSection('negocio')">
                 <i class="fas fa-store"></i> Mi Negocio
             </button>
+            <button class="nav-item" onclick="showSection('estadisticas')">
+                <i class="fas fa-chart-bar"></i> Estadísticas
+            </button>
         </nav>
         <button class="btn-logout" onclick="doLogout()">
             <i class="fas fa-sign-out-alt"></i> Cerrar sesión
@@ -198,6 +201,87 @@
                     <i class="fas fa-save"></i> Guardar cambios
                 </button>
             </form>
+        </section>
+
+        <!-- ── ESTADÍSTICAS ── -->
+        <section id="sec-estadisticas" class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-bar"></i> Estadísticas</h2>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <select id="stats-periodo" onchange="loadEstadisticas()" class="stats-select">
+                        <option value="hoy">Hoy</option>
+                        <option value="semana" selected>Esta semana</option>
+                        <option value="mes">Este mes</option>
+                        <option value="todo">Todo el tiempo</option>
+                    </select>
+                    <button class="btn-icon" onclick="loadEstadisticas()" title="Actualizar">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cards resumen -->
+            <div class="stats-cards" id="stats-cards">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#FFF3E0;color:#E65100">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-ventas">$0</div>
+                        <div class="stat-label">Total vendido</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#E3F2FD;color:#1565C0">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-pedidos">0</div>
+                        <div class="stat-label">Pedidos</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#E8F5E9;color:#2E7D32">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-promedio">$0</div>
+                        <div class="stat-label">Ticket promedio</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#F3E5F5;color:#6A1B9A">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stat-entregados">0</div>
+                        <div class="stat-label">Entregados</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ventas por día -->
+            <div class="stats-section">
+                <h3 class="stats-section-title"><i class="fas fa-calendar-alt"></i> Ventas por día</h3>
+                <div class="stats-chart-wrap">
+                    <div id="stats-chart" class="stats-chart"></div>
+                </div>
+            </div>
+
+            <!-- Productos más vendidos -->
+            <div class="stats-section">
+                <h3 class="stats-section-title"><i class="fas fa-trophy"></i> Productos más vendidos</h3>
+                <div id="stats-productos" class="stats-productos">
+                    <div class="empty"><i class="fas fa-spinner fa-spin"></i><p>Cargando...</p></div>
+                </div>
+            </div>
+
+            <!-- Métodos de pago -->
+            <div class="stats-section">
+                <h3 class="stats-section-title"><i class="fas fa-credit-card"></i> Métodos de pago</h3>
+                <div id="stats-pagos" class="stats-pagos"></div>
+            </div>
+
         </section>
 
     </main>
