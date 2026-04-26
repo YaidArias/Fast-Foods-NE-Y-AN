@@ -66,6 +66,16 @@ function reproducirSonidoPedido() {
     }
 }
 
+function tiempoRelativo(ts) {
+    if (!ts) return '';
+    const fecha = ts.toDate ? ts.toDate() : new Date(ts);
+    const diff  = Math.floor((Date.now() - fecha.getTime()) / 1000);
+    if (diff < 60)   return 'hace ' + diff + 's';
+    if (diff < 3600) return 'hace ' + Math.floor(diff / 60) + ' min';
+    if (diff < 86400) return 'hace ' + Math.floor(diff / 3600) + ' h';
+    return 'hace ' + Math.floor(diff / 86400) + ' días';
+}
+
 function statusLabel(s) {
     return {
         nuevo:      'Nuevo',
@@ -165,7 +175,7 @@ function renderPedidos() {
             <div class="pedido-top">
                 <div>
                     <div class="pedido-id">${p.orderId}</div>
-                    <div style="font-size:0.78rem;color:var(--text-light)">${formatDate(p.createdAt)}</div>
+                    <div style="font-size:0.78rem;color:var(--text-light)">${formatDate(p.createdAt)} · <span style="color:var(--primary);font-weight:600">${tiempoRelativo(p.createdAt)}</span></div>
                 </div>
                 <span class="badge-estado badge-${p.status}">${statusLabel(p.status)}</span>
             </div>
