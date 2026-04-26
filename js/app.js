@@ -353,7 +353,7 @@ async function sendOrder(event) {
         myOrders.push(orderId);
         localStorage.setItem('myOrders', JSON.stringify(myOrders));
         closeCheckout();
-        showSuccessModal(orderId);
+        showSuccessModal(orderData);
         cart = [];
         updateCartBadge();
         document.getElementById('checkout-form').reset();
@@ -389,8 +389,31 @@ function sendNtfyNotification(orderData) {
     .catch(err => console.log('Error ntfy:', err.message));
 }
 
-function showSuccessModal(orderId) {
+function showSuccessModal(orderData) {
+    const orderId = typeof orderData === 'string' ? orderData : orderData.orderId;
     document.getElementById('success-order-id').textContent = 'Pedido: ' + orderId;
+
+    // Generar link de WhatsApp
+    const btnWa = document.getElementById('btn-share-whatsapp');
+    if (btnWa && typeof orderData === 'object') {
+        const itemsTexto = (orderData.items || [])
+            .map(i => '  - ' + i.quantity + 'x ' + i.name)
+            .join('%0A');
+        const total = orderData.total ? '$' + Number(orderData.total).toLocaleString('es-CO') : '';
+        const notas = orderData.notes ? '%0ANotas: ' + orderData.notes : '';
+        const mensaje =
+            'Hola! Mi pedido es:%0A%0A' +
+            '*Orden:* ' + orderId + '%0A' +
+            '*Productos:*%0A' + itemsTexto + '%0A' +
+            '*Total:* ' + total + '%0A' +
+            '*Pago:* ' + (orderData.paymentMethod || '') + '%0A' +
+            '*Direcci%C3%B3n:* ' + (orderData.customerAddress || '') +
+            notas;
+        const tel = ((NEGOCIO && NEGOCIO.tel1) || '3156848558').replace(/[^0-9]/g, '');
+        btnWa.href = 'https://wa.me/57' + tel + '?text=' + mensaje;
+        btnWa.style.display = 'flex';
+    }
+
     document.getElementById('success-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
