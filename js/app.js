@@ -20,11 +20,13 @@ const NEGOCIO_DEFAULT = {
     dias:       "Viernes - Sábados y Domingo",
     horario:    "05:00 PM - 11:00 PM",
     bienvenida: "¡Bienvenido! Pide tu comida favorita y te la llevamos gratis a tu casa 🛵",
-    domicilio:  "Domicilio Gratis"
+    domicilio:     "Domicilio Gratis",
+    tiempoEntrega: "25-35"
 };
 
-let PRODUCTS = [];
-let NEGOCIO  = { ...NEGOCIO_DEFAULT };
+let PRODUCTS        = [];
+let NEGOCIO         = { ...NEGOCIO_DEFAULT };
+let NEGOCIO_ABIERTO = null;
 
 // ============================================
 // STATE
@@ -71,8 +73,11 @@ async function loadFirestoreData() {
         );
         snap.forEach(d => {
             if (d.id === 'negocio') NEGOCIO = { ...NEGOCIO_DEFAULT, ...d.data() };
+            if (d.id === 'estado')  NEGOCIO_ABIERTO = d.data().abierto !== false;
         });
+        if (NEGOCIO_ABIERTO === null) NEGOCIO_ABIERTO = calcularSiEstaAbierto();
         applyNegocioToUI();
+        applyEstadoNegocio();
     } catch (e) { console.log('Usando info negocio por defecto'); }
 
     // 2. Cargar productos desde Firestore
@@ -111,6 +116,14 @@ function applyNegocioToUI() {
     const heroBadge = document.querySelector('.hero-badge span');
     if (heroBadge) heroBadge.textContent = NEGOCIO.domicilio;
 
+    // Mostrar tiempo estimado
+    const heroTiempo     = document.getElementById('hero-tiempo');
+    const heroTiempoText = document.getElementById('hero-tiempo-text');
+    if (heroTiempo && heroTiempoText && NEGOCIO.tiempoEntrega) {
+        heroTiempoText.textContent = NEGOCIO.tiempoEntrega + ' min';
+        heroTiempo.style.display = 'flex';
+    }
+
     // Actualizar info cards
     const infoCards = document.querySelectorAll('.info-card');
     if (infoCards.length >= 3) {
@@ -125,6 +138,56 @@ function applyNegocioToUI() {
         const telP = infoCards[2].querySelector('p');
         if (telP) telP.textContent = `${NEGOCIO.tel1}${NEGOCIO.tel2 ? ' - ' + NEGOCIO.tel2 : ''}`;
     }
+}
+
+// ============================================
+// ESTADO DEL NEGOCIO (ABIERTO / CERRADO)
+// ============================================
+function calcularSiEstaAbierto() {
+    const diasAtencion = NEGOCIO.diasNumeros || [5, 6, 0];
+    const horaAbre     = NEGOCIO.horaAbre    || '17:00';
+    const horaCierra   = NEGOCIO.horaCierra  || '23:00';
+    const ahora   = new Date();
+    const dia     = ahora.getDay();
+    const horaHoy = ahora.getHours() * 60 + ahora.getMinutes();
+    const [hA, mA] = horaAbre.split(':').map(Number);
+    const [hC, mC] = horaCierra.split(':').map(Number);
+    return diasAtencion.includes(dia) && horaHoy >= (hA*60+mA) && horaHoy < (hC*60+mC);
+}
+
+function applyEstadoNegocio() {
+    const hero = document.querySelector('.hero');
+    if (!hero) return;
+
+    const existing = document.getElementById('banner-cerrado');
+    if (existing) existing.remove();
+
+    if (NEGOCIO_ABIERTO) {
+        const badge = document.querySelector('.hero-badge');
+        if (badge) {
+            badge.style.background = 'rgba(39,174,96,0.85)';
+            badge.innerHTML = '<i class="fas fa-circle" style="font-size:0.6rem"></i><span>Abierto ahora</span>';
+        }
+    } else {
+        const banner = document.createElement('div');
+        banner.id = 'banner-cerrado';
+        banner.innerHTML =
+            '<div style="background:linear-gradient(135deg,#2C3E50,#1a252f);color:white;text-align:center;padding:16px 20px;font-family:Poppins,sans-serif">' +
+            '<div style="font-size:2rem;margin-bottom:6px">🔒</div>' +
+            '<div style="font-weight:700;font-size:1.1rem;margin-bottom:4px">Estamos Cerrados</div>' +
+            '<div style="font-size:0.85rem;opacity:0.85">Atendemos: ' + (NEGOCIO.dias || 'Viernes, Sábados y Domingos') +
+            '<br>' + (NEGOCIO.horario || '05:00 PM - 11:00 PM') + '</div></div>';
+        hero.after(banner);
+        deshabilitarPedidos();
+    }
+}
+
+function deshabilitarPedidos() {
+    const cartBtn = document.getElementById('cart-btn');
+    if (cartBtn) { cartBtn.style.opacity = '0.5'; cartBtn.style.pointerEvents = 'none'; }
+    window.openProductModal = function() {
+        showToast('Estamos cerrados. Vuelve en nuestro horario de atención.');
+    };
 }
 
 // ============================================
@@ -181,28 +244,27 @@ function openProductModal(productId) {
     const desc   = currentProduct.descripcion || currentProduct.description;
     const icon   = currentProduct.icon || 'fa-hamburger';
     const img    = currentProduct.imagen || null;
-    const badge  = currentProduct.badge  || null;
 
     const modal = document.getElementById('product-modal');
-    // Mostrar foto grande si el producto tiene imagen
-    const imgHTML = img
-        ? '<div class="modal-product-image-full"><img src="' + img + '" alt="' + nombre + '" class="modal-product-img-full">' + (badge ? '<span class="modal-product-badge">' + badge + '</span>' : '') + '</div>'
-        : '<div class="modal-product-image"><i class="fas ' + icon + '"></i>' + (badge ? '<span class="product-badge">' + badge + '</span>' : '') + '</div>';
-
-    document.getElementById('modal-product').innerHTML =
-        imgHTML +
-        '<div class="modal-product-info">' +
-        '<h3 class="modal-product-name">' + nombre + '</h3>' +
-        '<p class="modal-product-description">' + desc + '</p>' +
-        '<div class="modal-product-price">' + formatPrice(precio) + '</div>' +
-        '<div class="quantity-selector">' +
-        '<button class="qty-btn" onclick="changeQuantity(-1)"><i class="fas fa-minus"></i></button>' +
-        '<span class="qty-value" id="modal-qty">1</span>' +
-        '<button class="qty-btn" onclick="changeQuantity(1)"><i class="fas fa-plus"></i></button>' +
-        '</div>' +
-        '<button class="btn-add-modal" onclick="addToCartFromModal()">' +
-        '<i class="fas fa-shopping-cart"></i> Agregar ' + formatPrice(precio) + ' al carrito' +
-        '</button></div>';
+    document.getElementById('modal-product').innerHTML = `
+        <div class="modal-product-image" style="${img ? `background-image:url('${img}');background-size:cover;background-position:center` : ''}">
+            ${!img ? `<i class="fas ${icon}"></i>` : ''}
+        </div>
+        <div class="modal-product-info">
+            <h3 class="modal-product-name">${nombre}</h3>
+            <p class="modal-product-description">${desc}</p>
+            <div class="modal-product-price">${formatPrice(precio)}</div>
+            <div class="quantity-selector">
+                <button class="qty-btn" onclick="changeQuantity(-1)"><i class="fas fa-minus"></i></button>
+                <span class="qty-value" id="modal-qty">1</span>
+                <button class="qty-btn" onclick="changeQuantity(1)"><i class="fas fa-plus"></i></button>
+            </div>
+            <button class="btn-add-modal" onclick="addToCartFromModal()">
+                <i class="fas fa-shopping-cart"></i>
+                Agregar ${formatPrice(precio)} al carrito
+            </button>
+        </div>
+    `;
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -353,7 +415,7 @@ async function sendOrder(event) {
         myOrders.push(orderId);
         localStorage.setItem('myOrders', JSON.stringify(myOrders));
         closeCheckout();
-        showSuccessModal(orderData);
+        showSuccessModal(orderId);
         cart = [];
         updateCartBadge();
         document.getElementById('checkout-form').reset();
@@ -389,31 +451,8 @@ function sendNtfyNotification(orderData) {
     .catch(err => console.log('Error ntfy:', err.message));
 }
 
-function showSuccessModal(orderData) {
-    const orderId = typeof orderData === 'string' ? orderData : orderData.orderId;
+function showSuccessModal(orderId) {
     document.getElementById('success-order-id').textContent = 'Pedido: ' + orderId;
-
-    // Generar link de WhatsApp
-    const btnWa = document.getElementById('btn-share-whatsapp');
-    if (btnWa && typeof orderData === 'object') {
-        const itemsTexto = (orderData.items || [])
-            .map(i => '  - ' + i.quantity + 'x ' + i.name)
-            .join('%0A');
-        const total = orderData.total ? '$' + Number(orderData.total).toLocaleString('es-CO') : '';
-        const notas = orderData.notes ? '%0ANotas: ' + orderData.notes : '';
-        const mensaje =
-            'Hola! Mi pedido es:%0A%0A' +
-            '*Orden:* ' + orderId + '%0A' +
-            '*Productos:*%0A' + itemsTexto + '%0A' +
-            '*Total:* ' + total + '%0A' +
-            '*Pago:* ' + (orderData.paymentMethod || '') + '%0A' +
-            '*Direcci%C3%B3n:* ' + (orderData.customerAddress || '') +
-            notas;
-        const tel = ((NEGOCIO && NEGOCIO.tel1) || '3156848558').replace(/[^0-9]/g, '');
-        btnWa.href = 'https://wa.me/57' + tel + '?text=' + mensaje;
-        btnWa.style.display = 'flex';
-    }
-
     document.getElementById('success-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
