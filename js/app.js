@@ -187,7 +187,7 @@ function deshabilitarPedidos() {
     const cartBtn = document.getElementById('cart-btn');
     if (cartBtn) { cartBtn.style.opacity = '0.5'; cartBtn.style.pointerEvents = 'none'; }
     window.openProductModal = function() {
-        showToast('Estamos cerrados. Vuelve en nuestro horario de atención.');
+        showToast('🔒 Estamos cerrados por ahora.');
     };
 }
 
