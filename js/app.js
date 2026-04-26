@@ -181,6 +181,7 @@ function openProductModal(productId) {
     const desc   = currentProduct.descripcion || currentProduct.description;
     const icon   = currentProduct.icon || 'fa-hamburger';
     const img    = currentProduct.imagen || null;
+    const badge  = currentProduct.badge  || null;
 
     const modal = document.getElementById('product-modal');
     // Mostrar foto grande si el producto tiene imagen
