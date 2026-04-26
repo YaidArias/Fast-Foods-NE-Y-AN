@@ -379,13 +379,19 @@ body { font-family:'Poppins',sans-serif; background:var(--bg); color:var(--text)
     /* Filtros scroll horizontal */
     .filters {
         overflow-x: auto;
-        flex-wrap: nowrap;
-        padding-bottom: 4px;
+        flex-wrap: nowrap !important;
+        padding-bottom: 6px;
         scrollbar-width: none;
         gap: 6px;
+        -webkit-overflow-scrolling: touch;
     }
     .filters::-webkit-scrollbar { display: none; }
-    .filter { flex-shrink: 0; font-size: 0.8rem; padding: 7px 14px; }
+    .filter {
+        flex-shrink: 0 !important;
+        font-size: 0.78rem;
+        padding: 6px 12px;
+        white-space: nowrap;
+    }
 
     /* Chart responsive */
     .stats-chart { height: 120px; }
