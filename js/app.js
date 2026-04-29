@@ -208,28 +208,70 @@ function initSplash() {
 // ============================================
 function renderMenu() {
     const grid = document.getElementById('menu-grid');
+
+    // Eliminar cualquier título estático previo
+    const menuSection = grid.closest('.menu-section');
+    if (menuSection) {
+        const staticTitle = menuSection.querySelector('h3.section-title');
+        if (staticTitle) staticTitle.remove();
+    }
+
     if (!PRODUCTS.length) {
-        grid.innerHTML = `<div style="text-align:center;padding:40px;color:#999"><i class="fas fa-spinner fa-spin" style="font-size:2rem"></i><p style="margin-top:12px">Cargando menú...</p></div>`;
+        grid.innerHTML = '<div style="text-align:center;padding:40px;color:#999"><i class="fas fa-spinner fa-spin" style="font-size:2rem"></i><p style="margin-top:12px">Cargando menú...</p></div>';
         return;
     }
-    grid.innerHTML = PRODUCTS.map(product => `
-        <div class="product-card" onclick="openProductModal('${product.id}')">
-            <div class="product-image" style="${product.imagen ? `background-image:url('${product.imagen}');background-size:cover;background-position:center` : ''}">
-                ${!product.imagen ? `<i class="fas ${product.icon || 'fa-hamburger'}"></i>` : ''}
-                ${product.badge ? `<span class="product-badge">${product.badge}</span>` : ''}
-            </div>
-            <div class="product-info">
-                <h4 class="product-name">${product.nombre || product.name}</h4>
-                <p class="product-description">${product.descripcion || product.description}</p>
-                <div class="product-footer">
-                    <span class="product-price">${formatPrice(product.precio || product.price)}</span>
-                    <button class="btn-add" onclick="event.stopPropagation(); openProductModal('${product.id}')">
-                        <i class="fas fa-plus"></i> Agregar
-                    </button>
-                </div>
-            </div>
-        </div>
-    `).join('');
+
+    // Agrupar productos por categoría
+    const categorias = {};
+    PRODUCTS.forEach(product => {
+        const cat = product.categoria || 'menu';
+        if (!categorias[cat]) categorias[cat] = [];
+        categorias[cat].push(product);
+    });
+
+    // Config de cada categoría
+    const catConfig = {
+        menu:    { titulo: 'Nuestro Menú', icono: 'fa-utensils'    },
+        bebidas: { titulo: 'Bebidas',       icono: 'fa-glass-water' },
+        otros:   { titulo: 'Otros',         icono: 'fa-star'        }
+    };
+
+    // Orden: menu primero, bebidas segundo, resto después — sin duplicados
+    const orden = [...new Set(['menu', 'bebidas', ...Object.keys(categorias)])];
+
+    const productCard = (product) => {
+        const nombre = product.nombre || product.name;
+        const precio = product.precio || product.price;
+        const desc   = product.descripcion || product.description;
+        const icon   = product.icon || 'fa-hamburger';
+        const img    = product.imagen || null;
+        const badge  = product.badge  || null;
+        const imgStyle = img ? 'background-image:url(' + img + ');background-size:cover;background-position:center' : '';
+        const iconHTML = !img ? '<i class="fas ' + icon + '"></i>' : '';
+        const badgeHTML = badge ? '<span class="product-badge">' + badge + '</span>' : '';
+        return '<div class="product-card" onclick="openProductModal('' + product.id + '')">'
+            + '<div class="product-image" style="' + imgStyle + '">' + iconHTML + badgeHTML + '</div>'
+            + '<div class="product-info">'
+            + '<h4 class="product-name">' + nombre + '</h4>'
+            + '<p class="product-description">' + desc + '</p>'
+            + '<div class="product-footer">'
+            + '<span class="product-price">' + formatPrice(precio) + '</span>'
+            + '<button class="btn-add" onclick="event.stopPropagation(); openProductModal('' + product.id + '')">'
+            + '<i class="fas fa-plus"></i> Agregar</button>'
+            + '</div></div></div>';
+    };
+
+    let html = '';
+    orden.forEach(cat => {
+        if (!categorias[cat] || categorias[cat].length === 0) return;
+        const cfg = catConfig[cat] || { titulo: cat, icono: 'fa-star' };
+        html += '<div class="menu-section-header" style="grid-column:1/-1;margin-top:8px">'
+            + '<h3 class="section-title"><i class="fas ' + cfg.icono + '"></i> ' + cfg.titulo + '</h3>'
+            + '</div>'
+            + categorias[cat].map(productCard).join('');
+    });
+
+    grid.innerHTML = html;
 }
 
 // ============================================
