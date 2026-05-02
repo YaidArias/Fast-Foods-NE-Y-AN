@@ -140,14 +140,14 @@ function applyNegocioToUI() {
     if (heroP) heroP.textContent = NEGOCIO.bienvenida;
 
     // Actualizar badge domicilio
-    const heroBadge = document.querySelector('.hero-badge span');
+    const heroBadge = document.getElementById('badge-domicilio-text') || document.querySelector('.hero-badge span');
     if (heroBadge) heroBadge.textContent = NEGOCIO.domicilio;
 
     // Mostrar tiempo estimado
     const heroTiempo     = document.getElementById('hero-tiempo');
     const heroTiempoText = document.getElementById('hero-tiempo-text');
     if (heroTiempo && heroTiempoText && NEGOCIO.tiempoEntrega) {
-        heroTiempoText.textContent = NEGOCIO.tiempoEntrega + ' min';
+        heroTiempoText.textContent = NEGOCIO.tiempoEntrega + ' minutos';
         heroTiempo.style.display = 'flex';
     }
 
@@ -238,12 +238,9 @@ function applyEstadoNegocio() {
     if (existing) existing.remove();
 
     if (NEGOCIO_ABIERTO) {
-        const badge = document.querySelector('.hero-badge');
-        if (badge) {
-            badge.style.background = '';
-            const spanBadge = badge.querySelector('span');
-            if (spanBadge) spanBadge.textContent = NEGOCIO.domicilio || 'Domicilio Gratis';
-        }
+        // Mostrar badge verde "Abierto ahora" sin tocar el badge de domicilio
+        const badgeEstado = document.getElementById('badge-estado');
+        if (badgeEstado) badgeEstado.style.display = 'flex';
     } else {
         const banner = document.createElement('div');
         banner.id = 'banner-cerrado';
