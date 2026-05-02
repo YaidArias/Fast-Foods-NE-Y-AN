@@ -575,19 +575,29 @@ function showSuccessModal(orderData) {
     const btnWa = document.getElementById('btn-share-whatsapp');
     if (btnWa && typeof orderData === 'object') {
         const itemsTexto = (orderData.items || [])
-            .map(i => '  - ' + i.quantity + 'x ' + i.name)
-            .join('%0A');
+            .map(i => {
+                const subtotal = (i.price || 0) * (i.quantity || 1);
+                return `  • ${i.quantity}x ${i.name}\n    $${(i.price || 0).toLocaleString('es-CO')} c/u → $${subtotal.toLocaleString('es-CO')}`;
+            })
+            .join('\n');
         const total  = orderData.total ? '$' + Number(orderData.total).toLocaleString('es-CO') : '';
-        const notas  = orderData.notes ? '%0ANotas: ' + orderData.notes : '';
+        const notas  = orderData.notes ? `\n📝 Notas: ${orderData.notes}` : '';
         const tel    = ((NEGOCIO && NEGOCIO.tel1) || '3156848558').replace(/[^0-9]/g, '');
-        const mensaje =
-            'Hola! Mi pedido es:%0A%0A' +
-            '*Orden:* ' + orderId + '%0A' +
-            '*Productos:*%0A' + itemsTexto + '%0A' +
-            '*Total:* ' + total + '%0A' +
-            '*Pago:* ' + (orderData.paymentMethod || '') + '%0A' +
-            '*Direcci%C3%B3n:* ' + (orderData.customerAddress || '') + notas;
-        btnWa.href = 'https://wa.me/57' + tel + '?text=' + mensaje;
+        const pagoIconos = { 'Efectivo': '💵', 'Nequi': '📲', 'Daviplata': '📲', 'Bre-B': '🏦' };
+        const pagoIcono  = pagoIconos[orderData.paymentMethod] || '💳';
+
+        const texto =
+            `🛵 *MI PEDIDO NE&AN*\n` +
+            `──────────────────\n\n` +
+            `📋 *Orden:* ${orderId}\n\n` +
+            `🛒 *PRODUCTOS:*\n${itemsTexto}\n\n` +
+            `──────────────────\n` +
+            `💰 *TOTAL: ${total}*\n` +
+            `${pagoIcono} *Pago:* ${orderData.paymentMethod || ''}\n` +
+            `📍 *Dirección:* ${orderData.customerAddress || ''}` +
+            notas;
+
+        btnWa.href = 'https://wa.me/57' + tel + '?text=' + encodeURIComponent(texto);
         btnWa.style.display = 'flex';
     }
 
@@ -631,7 +641,28 @@ function loadMyOrders() {
             ordersList.innerHTML = `<div class="orders-empty"><i class="fas fa-receipt"></i><p>No tienes pedidos aún</p></div>`;
             return;
         }
-        ordersList.innerHTML = orders.map(order => `
+        ordersList.innerHTML = orders.map(order => {
+            const tel = ((NEGOCIO && NEGOCIO.tel1) || '3156848558').replace(/[^0-9]/g, '');
+            const itemsTexto = (order.items || [])
+                .map(i => {
+                    const subtotal = (i.price || 0) * (i.quantity || 1);
+                    return `  • ${i.quantity}x ${i.name}\n    $${(i.price || 0).toLocaleString('es-CO')} c/u → $${subtotal.toLocaleString('es-CO')}`;
+                }).join('\n');
+            const pagoIconos = { 'Efectivo':'💵','Nequi':'📲','Daviplata':'📲','Bre-B':'🏦' };
+            const pagoIcono  = pagoIconos[order.paymentMethod] || '💳';
+            const notas      = order.notes ? `\n📝 Notas: ${order.notes}` : '';
+            const texto =
+                `🛵 *MI PEDIDO NE&AN*\n` +
+                `──────────────────\n\n` +
+                `📋 *Orden:* ${order.orderId}\n\n` +
+                `🛒 *PRODUCTOS:*\n${itemsTexto}\n\n` +
+                `──────────────────\n` +
+                `💰 *TOTAL: $${(order.total||0).toLocaleString('es-CO')}*\n` +
+                `${pagoIcono} *Pago:* ${order.paymentMethod||''}\n` +
+                `📍 *Dirección:* ${order.customerAddress||''}` + notas;
+            const waUrl = 'https://wa.me/57' + tel + '?text=' + encodeURIComponent(texto);
+
+            return `
             <div class="order-card">
                 <div class="order-header">
                     <span class="order-id">${order.orderId}</span>
@@ -643,7 +674,11 @@ function loadMyOrders() {
                     <span><i class="fas fa-calendar"></i> ${formatDate(order.createdAt)}</span>
                     <span><i class="fas fa-credit-card"></i> ${order.paymentMethod}</span>
                 </div>
-            </div>`).join('');
+                <a href="${waUrl}" target="_blank" class="btn-wa-pedido">
+                    <i class="fab fa-whatsapp"></i> Compartir pedido
+                </a>
+            </div>`;
+        }).join('');
     });
 }
 

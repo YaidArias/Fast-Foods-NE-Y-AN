@@ -27,6 +27,38 @@
         .hero-badge-estado {
             background: rgba(39, 174, 96, 0.85) !important;
         }
+        .btn-whatsapp-share {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px;
+            background: #25D366;
+            color: #fff;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            text-decoration: none;
+            margin-bottom: 12px;
+        }
+        .btn-whatsapp-share:hover { background: #1ebe5d; }
+        .btn-wa-pedido {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: #25D366;
+            color: #fff;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .btn-wa-pedido:hover { background: #1ebe5d; }
     </style>
 
     <!-- Firebase SDK -->
@@ -282,6 +314,9 @@
             <p>Tu pedido ha sido recibido correctamente.</p>
             <p class="success-order-id" id="success-order-id"></p>
             <p class="success-note">Puedes ver el estado de tu pedido en "Mis Pedidos"</p>
+            <a id="btn-share-whatsapp" class="btn-whatsapp-share" href="#" target="_blank" style="display:none">
+                <i class="fab fa-whatsapp"></i> Compartir pedido por WhatsApp
+            </a>
             <button class="btn-primary" onclick="closeSuccess()">
                 <i class="fas fa-utensils"></i> Seguir Comprando
             </button>
