@@ -71,11 +71,31 @@ async function loadFirestoreData() {
         const snap = await window.firebaseGetDocs(
             window.firebaseQuery(window.firebaseCollection(window.db, 'config'))
         );
+        let estadoManual = null;
         snap.forEach(d => {
             if (d.id === 'negocio') NEGOCIO = { ...NEGOCIO_DEFAULT, ...d.data() };
-            if (d.id === 'estado')  NEGOCIO_ABIERTO = d.data().abierto !== false;
+            if (d.id === 'estado')  estadoManual = d.data();
         });
-        if (NEGOCIO_ABIERTO === null) NEGOCIO_ABIERTO = calcularSiEstaAbierto();
+
+        const dentroDeHorario = calcularSiEstaAbierto();
+
+        if (dentroDeHorario) {
+            // Si estamos dentro del horario, SIEMPRE abierto
+            // El estado manual solo puede CERRAR dentro del horario, no puede abrir fuera
+            if (estadoManual && estadoManual.abierto === false) {
+                NEGOCIO_ABIERTO = false; // Cerrado manualmente dentro del horario
+            } else {
+                NEGOCIO_ABIERTO = true;  // Abierto por horario (o manualmente)
+            }
+        } else {
+            // Fuera del horario, SIEMPRE cerrado (ignorar estado manual "abierto")
+            if (estadoManual && estadoManual.abierto === true) {
+                NEGOCIO_ABIERTO = true;  // Abierto manualmente fuera del horario
+            } else {
+                NEGOCIO_ABIERTO = false; // Cerrado por horario
+            }
+        }
+
         applyNegocioToUI();
         applyEstadoNegocio();
     } catch (e) { console.log('Usando info negocio por defecto'); }
@@ -143,16 +163,43 @@ function applyNegocioToUI() {
 // ============================================
 // ESTADO DEL NEGOCIO (ABIERTO / CERRADO)
 // ============================================
+function parsearHoraAMinutos(horaStr) {
+    // Parsea formatos: "17:00", "8:00 AM", "11:30PM", "08:00 AM"
+    if (!horaStr) return null;
+    const str = horaStr.trim().toUpperCase();
+    const match = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/);
+    if (!match) return null;
+    let h = parseInt(match[1]);
+    const m = parseInt(match[2]);
+    const periodo = match[3];
+    if (periodo === 'PM' && h !== 12) h += 12;
+    if (periodo === 'AM' && h === 12) h = 0;
+    return h * 60 + m;
+}
+
 function calcularSiEstaAbierto() {
     const diasAtencion = NEGOCIO.diasNumeros || [5, 6, 0];
-    const horaAbre     = NEGOCIO.horaAbre    || '17:00';
-    const horaCierra   = NEGOCIO.horaCierra  || '23:00';
     const ahora   = new Date();
     const dia     = ahora.getDay();
     const horaHoy = ahora.getHours() * 60 + ahora.getMinutes();
-    const [hA, mA] = horaAbre.split(':').map(Number);
-    const [hC, mC] = horaCierra.split(':').map(Number);
-    return diasAtencion.includes(dia) && horaHoy >= (hA*60+mA) && horaHoy < (hC*60+mC);
+
+    // Intentar parsear desde el campo horario de texto "08:00 AM - 11:30PM"
+    let minAbre   = null;
+    let minCierra = null;
+
+    if (NEGOCIO.horario) {
+        const partes = NEGOCIO.horario.split('-');
+        if (partes.length >= 2) {
+            minAbre   = parsearHoraAMinutos(partes[0]);
+            minCierra = parsearHoraAMinutos(partes[1]);
+        }
+    }
+
+    // Fallback a campos específicos o valores por defecto
+    if (minAbre   === null) minAbre   = parsearHoraAMinutos(NEGOCIO.horaAbre)   || 17 * 60;
+    if (minCierra === null) minCierra = parsearHoraAMinutos(NEGOCIO.horaCierra) || 23 * 60;
+
+    return diasAtencion.includes(dia) && horaHoy >= minAbre && horaHoy < minCierra;
 }
 
 function applyEstadoNegocio() {

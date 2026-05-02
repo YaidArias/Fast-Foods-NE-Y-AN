@@ -421,28 +421,24 @@ window.saveNegocio = async function(e) {
 async function cargarEstadoNegocio() {
     try {
         const snap = await window.fsGetDoc(window.fsDoc(window.db, 'config', 'estado'));
-        const card = document.getElementById('estado-negocio-card');
+        const card     = document.getElementById('estado-negocio-card');
         const subtitulo = document.getElementById('estado-subtitulo');
         const btnAbrir  = document.getElementById('btn-abrir');
         const btnCerrar = document.getElementById('btn-cerrar');
 
-        if (snap.exists() && snap.data().abierto === false) {
-            // CERRADO manualmente
+        const cerradoManualmente = snap.exists() && snap.data().abierto === false;
+
+        if (cerradoManualmente) {
+            // CERRADO manualmente — override del horario
             card.className = 'estado-negocio-card cerrado';
-            subtitulo.innerHTML = '<i class="fas fa-circle"></i> Cerrado manualmente';
+            subtitulo.innerHTML = '<i class="fas fa-circle"></i> Cerrado manualmente (override de horario)';
             btnAbrir.style.display  = 'flex';
             btnCerrar.style.display = 'none';
-        } else if (snap.exists() && snap.data().abierto === true) {
-            // ABIERTO manualmente
-            card.className = 'estado-negocio-card abierto';
-            subtitulo.innerHTML = '<i class="fas fa-circle"></i> Abierto manualmente';
-            btnAbrir.style.display  = 'none';
-            btnCerrar.style.display = 'flex';
         } else {
-            // Modo automático por horario
+            // Modo automático por horario (estado manual eliminado o no existe)
             card.className = 'estado-negocio-card automatico';
-            subtitulo.innerHTML = '<i class="fas fa-clock"></i> Automático (por horario)';
-            btnAbrir.style.display  = 'flex';
+            subtitulo.innerHTML = '<i class="fas fa-clock"></i> Automático — siguiendo horario configurado';
+            btnAbrir.style.display  = 'none';
             btnCerrar.style.display = 'flex';
         }
     } catch (e) {
@@ -478,11 +474,18 @@ window.compartirPedidoWhatsApp = function(orderId) {
 
 window.toggleEstadoNegocio = async function(abierto) {
     try {
-        await window.fsSetDoc(window.fsDoc(window.db, 'config', 'estado'), {
-            abierto: abierto,
-            updatedAt: new Date()
-        });
-        toast(abierto ? '✅ Negocio abierto' : '🔒 Negocio cerrado');
+        if (abierto) {
+            // Al abrir: eliminar el estado manual para que el horario automático tome control
+            await window.fsDeleteDoc(window.fsDoc(window.db, 'config', 'estado'));
+            toast('✅ Negocio abierto — modo automático activado');
+        } else {
+            // Al cerrar: guardar estado manual cerrado
+            await window.fsSetDoc(window.fsDoc(window.db, 'config', 'estado'), {
+                abierto: false,
+                updatedAt: new Date()
+            });
+            toast('🔒 Negocio cerrado manualmente');
+        }
         cargarEstadoNegocio();
     } catch (err) {
         toast('Error al cambiar estado: ' + err.message, true);
