@@ -177,13 +177,34 @@ function parsearHoraAMinutos(horaStr) {
     return h * 60 + m;
 }
 
+// Convierte el campo "dias" de texto a números de getDay()
+// Ej: "Viernes-Sábados-Domingos." → [5, 6, 0]
+function parsearDiasTexto(diasStr) {
+    if (!diasStr) return null;
+    const mapa = {
+        'lunes': 1, 'martes': 2, 'miércoles': 3, 'miercoles': 3,
+        'jueves': 4, 'viernes': 5, 'sábados': 6, 'sabados': 6,
+        'sábado': 6, 'sabado': 6, 'domingos': 0, 'domingo': 0
+    };
+    const lower = diasStr.toLowerCase();
+    const nums  = [];
+    Object.entries(mapa).forEach(([nombre, num]) => {
+        if (lower.includes(nombre) && !nums.includes(num)) nums.push(num);
+    });
+    return nums.length > 0 ? nums : null;
+}
+
 function calcularSiEstaAbierto() {
-    const diasAtencion = NEGOCIO.diasNumeros || [5, 6, 0];
+    // Prioridad: diasNumeros de Firestore > parseo del campo dias > fallback vie/sab/dom
+    const diasAtencion = NEGOCIO.diasNumeros
+        || parsearDiasTexto(NEGOCIO.dias)
+        || [5, 6, 0];
+
     const ahora   = new Date();
     const dia     = ahora.getDay();
     const horaHoy = ahora.getHours() * 60 + ahora.getMinutes();
 
-    // Intentar parsear desde el campo horario de texto "08:00 AM - 11:30PM"
+    // Parsear desde el campo horario de texto "08:00 AM - 11:30PM"
     let minAbre   = null;
     let minCierra = null;
 
@@ -195,9 +216,9 @@ function calcularSiEstaAbierto() {
         }
     }
 
-    // Fallback a campos específicos o valores por defecto
+    // Fallback a campos específicos o valores por defecto (5 PM - 11:30 PM)
     if (minAbre   === null) minAbre   = parsearHoraAMinutos(NEGOCIO.horaAbre)   || 17 * 60;
-    if (minCierra === null) minCierra = parsearHoraAMinutos(NEGOCIO.horaCierra) || 23 * 60;
+    if (minCierra === null) minCierra = parsearHoraAMinutos(NEGOCIO.horaCierra) || 23 * 60 + 30;
 
     return diasAtencion.includes(dia) && horaHoy >= minAbre && horaHoy < minCierra;
 }

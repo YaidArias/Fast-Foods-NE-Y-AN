@@ -418,10 +418,49 @@ window.saveNegocio = async function(e) {
 // ════════════════════════════════════════════
 // ESTADO NEGOCIO (ABIERTO / CERRADO)
 // ════════════════════════════════════════════
+
+// Parsea "05:00PM", "5:00 PM", "17:00" → minutos desde medianoche
+function adminParsearHora(horaStr) {
+    if (!horaStr) return null;
+    const str = horaStr.trim().toUpperCase();
+    const match = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/);
+    if (!match) return null;
+    let h = parseInt(match[1]);
+    const m = parseInt(match[2]);
+    const periodo = match[3];
+    if (periodo === 'PM' && h !== 12) h += 12;
+    if (periodo === 'AM' && h === 12) h = 0;
+    return h * 60 + m;
+}
+
+// Retorna true si ahora mismo el horario indica que está abierto
+function adminCalcularSiEstaAbierto() {
+    try {
+        const negSnap = window._adminNegocioCache;
+        const diasAtencion = negSnap?.diasNumeros || [5, 6, 0]; // vie, sab, dom
+        const horarioStr   = negSnap?.horario || '05:00PM - 11:30PM';
+        const ahora   = new Date();
+        const dia     = ahora.getDay();
+        const horaHoy = ahora.getHours() * 60 + ahora.getMinutes();
+
+        const partes  = horarioStr.split('-');
+        const minAbre   = adminParsearHora(partes[0]) ?? 17 * 60;
+        const minCierra = adminParsearHora(partes[1]) ?? 23 * 60 + 30;
+
+        return diasAtencion.includes(dia) && horaHoy >= minAbre && horaHoy < minCierra;
+    } catch {
+        return false;
+    }
+}
+
 async function cargarEstadoNegocio() {
     try {
-        const snap = await window.fsGetDoc(window.fsDoc(window.db, 'config', 'estado'));
-        const card     = document.getElementById('estado-negocio-card');
+        // Cargar datos del negocio para tener el horario actualizado
+        const negSnap = await window.fsGetDoc(window.fsDoc(window.db, 'config', 'negocio'));
+        window._adminNegocioCache = negSnap.exists() ? negSnap.data() : null;
+
+        const snap      = await window.fsGetDoc(window.fsDoc(window.db, 'config', 'estado'));
+        const card      = document.getElementById('estado-negocio-card');
         const subtitulo = document.getElementById('estado-subtitulo');
         const btnAbrir  = document.getElementById('btn-abrir');
         const btnCerrar = document.getElementById('btn-cerrar');
@@ -435,9 +474,15 @@ async function cargarEstadoNegocio() {
             btnAbrir.style.display  = 'flex';
             btnCerrar.style.display = 'none';
         } else {
-            // Modo automático por horario (estado manual eliminado o no existe)
-            card.className = 'estado-negocio-card automatico';
-            subtitulo.innerHTML = '<i class="fas fa-clock"></i> Automático — siguiendo horario configurado';
+            // Modo automático — calcular si ahora está abierto o cerrado por horario
+            const abiertoPorHorario = adminCalcularSiEstaAbierto();
+            if (abiertoPorHorario) {
+                card.className = 'estado-negocio-card abierto';
+                subtitulo.innerHTML = '<i class="fas fa-circle"></i> Abierto — dentro del horario configurado';
+            } else {
+                card.className = 'estado-negocio-card cerrado-auto';
+                subtitulo.innerHTML = '<i class="fas fa-clock"></i> Cerrado — fuera del horario configurado';
+            }
             btnAbrir.style.display  = 'none';
             btnCerrar.style.display = 'flex';
         }
