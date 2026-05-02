@@ -416,7 +416,7 @@ window.saveNegocio = async function(e) {
 };
 
 // ════════════════════════════════════════════
-// ESTADO NEGOCIO (ABIERTO / CERRADO)
+// ESTADO NEGOCIO — OVERRIDE TEMPORAL CON EXPIRACIÓN
 // ════════════════════════════════════════════
 
 // Parsea "05:00PM", "5:00 PM", "17:00" → minutos desde medianoche
@@ -433,63 +433,190 @@ function adminParsearHora(horaStr) {
     return h * 60 + m;
 }
 
+// Parsea días de texto → números getDay()
+function adminParsearDias(diasStr) {
+    if (!diasStr) return null;
+    const mapa = {
+        'lunes':1,'martes':2,'miércoles':3,'miercoles':3,
+        'jueves':4,'viernes':5,'sábados':6,'sabados':6,
+        'sábado':6,'sabado':6,'domingos':0,'domingo':0
+    };
+    const lower = diasStr.toLowerCase();
+    const nums = [];
+    Object.entries(mapa).forEach(([n, v]) => { if (lower.includes(n) && !nums.includes(v)) nums.push(v); });
+    return nums.length > 0 ? nums : null;
+}
+
 // Retorna true si ahora mismo el horario indica que está abierto
 function adminCalcularSiEstaAbierto() {
     try {
-        const negSnap = window._adminNegocioCache;
-        const diasAtencion = negSnap?.diasNumeros || [5, 6, 0]; // vie, sab, dom
-        const horarioStr   = negSnap?.horario || '05:00PM - 11:30PM';
+        const neg = window._adminNegocioCache;
+        const diasAtencion = neg?.diasNumeros || adminParsearDias(neg?.dias) || [5, 6, 0];
+        const horarioStr   = neg?.horario || '05:00PM - 11:30PM';
         const ahora   = new Date();
         const dia     = ahora.getDay();
         const horaHoy = ahora.getHours() * 60 + ahora.getMinutes();
-
         const partes  = horarioStr.split('-');
         const minAbre   = adminParsearHora(partes[0]) ?? 17 * 60;
         const minCierra = adminParsearHora(partes[1]) ?? 23 * 60 + 30;
-
         return diasAtencion.includes(dia) && horaHoy >= minAbre && horaHoy < minCierra;
-    } catch {
-        return false;
-    }
+    } catch { return false; }
+}
+
+// Formatea un Date a "hh:mm AM/PM"
+function formatHora12(date) {
+    return date.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit', hour12: true });
 }
 
 async function cargarEstadoNegocio() {
     try {
-        // Cargar datos del negocio para tener el horario actualizado
         const negSnap = await window.fsGetDoc(window.fsDoc(window.db, 'config', 'negocio'));
         window._adminNegocioCache = negSnap.exists() ? negSnap.data() : null;
 
-        const snap      = await window.fsGetDoc(window.fsDoc(window.db, 'config', 'estado'));
+        const snap = await window.fsGetDoc(window.fsDoc(window.db, 'config', 'estado'));
         const card      = document.getElementById('estado-negocio-card');
         const subtitulo = document.getElementById('estado-subtitulo');
         const btnAbrir  = document.getElementById('btn-abrir');
         const btnCerrar = document.getElementById('btn-cerrar');
+        const btnAuto   = document.getElementById('btn-auto');
 
-        const cerradoManualmente = snap.exists() && snap.data().abierto === false;
+        let overrideActivo = false;
 
-        if (cerradoManualmente) {
-            // CERRADO manualmente — override del horario
-            card.className = 'estado-negocio-card cerrado';
-            subtitulo.innerHTML = '<i class="fas fa-circle"></i> Cerrado manualmente (override de horario)';
-            btnAbrir.style.display  = 'flex';
-            btnCerrar.style.display = 'none';
-        } else {
-            // Modo automático — calcular si ahora está abierto o cerrado por horario
+        if (snap.exists()) {
+            const data = snap.data();
+            const expira = data.expiraEn ? (data.expiraEn.toDate ? data.expiraEn.toDate() : new Date(data.expiraEn)) : null;
+
+            // Si hay expiración y ya pasó → limpiar override automáticamente
+            if (expira && new Date() >= expira) {
+                await window.fsDeleteDoc(window.fsDoc(window.db, 'config', 'estado'));
+            } else {
+                overrideActivo = true;
+                const esAbierto = data.abierto === true;
+                const expiraTexto = expira ? ' hasta las ' + formatHora12(expira) : '';
+
+                if (esAbierto) {
+                    card.className = 'estado-negocio-card abierto';
+                    subtitulo.innerHTML = `<i class="fas fa-circle"></i> Abierto manualmente${expiraTexto}`;
+                } else {
+                    card.className = 'estado-negocio-card cerrado';
+                    subtitulo.innerHTML = `<i class="fas fa-circle"></i> Cerrado manualmente${expiraTexto}`;
+                }
+                btnAbrir.style.display  = esAbierto ? 'none' : 'flex';
+                btnCerrar.style.display = esAbierto ? 'flex' : 'none';
+                if (btnAuto) btnAuto.style.display = 'flex';
+            }
+        }
+
+        if (!overrideActivo) {
+            // Sin override — modo automático por horario
             const abiertoPorHorario = adminCalcularSiEstaAbierto();
             if (abiertoPorHorario) {
                 card.className = 'estado-negocio-card abierto';
-                subtitulo.innerHTML = '<i class="fas fa-circle"></i> Abierto — dentro del horario configurado';
+                subtitulo.innerHTML = '<i class="fas fa-circle"></i> Abierto — siguiendo horario automático';
             } else {
                 card.className = 'estado-negocio-card cerrado-auto';
                 subtitulo.innerHTML = '<i class="fas fa-clock"></i> Cerrado — fuera del horario configurado';
             }
             btnAbrir.style.display  = 'none';
             btnCerrar.style.display = 'flex';
+            if (btnAuto) btnAuto.style.display = 'none';
         }
     } catch (e) {
         console.log('Error cargando estado negocio:', e);
     }
 }
+
+// Muestra el modal de override temporal
+window.mostrarModalOverride = function(tipo) {
+    // tipo: 'abrir' | 'cerrar'
+    const existing = document.getElementById('modal-override');
+    if (existing) existing.remove();
+
+    const opciones = tipo === 'cerrar'
+        ? [ ['30 min', 30], ['1 hora', 60], ['2 horas', 120], ['Hasta mañana', -1] ]
+        : [ ['30 min', 30], ['1 hora', 60], ['2 horas', 120], ['Indefinido', 0] ];
+
+    const titulo  = tipo === 'cerrar' ? '🔒 ¿Cuánto tiempo cerrar?' : '🟢 ¿Cuánto tiempo abrir?';
+    const btnClass = tipo === 'cerrar' ? 'btn-cerrar-tiempo' : 'btn-abrir-tiempo';
+
+    const modal = document.createElement('div');
+    modal.id = 'modal-override';
+    modal.style.cssText = `
+        position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;
+        display:flex;align-items:center;justify-content:center;padding:20px;
+    `;
+    modal.innerHTML = `
+        <div style="background:var(--bg-card,#1e2330);border-radius:16px;padding:28px;
+                    width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+            <h3 style="margin:0 0 6px;font-size:1.1rem;color:var(--text,#fff)">${titulo}</h3>
+            <p style="margin:0 0 20px;font-size:0.85rem;color:var(--text-light,#aaa)">
+                Después del tiempo elegido, el horario automático vuelve a tomar control.
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+                ${opciones.map(([label, min]) => `
+                    <button onclick="aplicarOverride('${tipo}', ${min})"
+                        style="padding:14px 8px;border-radius:10px;border:none;cursor:pointer;
+                               font-size:0.95rem;font-weight:600;
+                               background:var(--primary,#e8620a);color:#fff">
+                        ${label}
+                    </button>
+                `).join('')}
+            </div>
+            <button onclick="document.getElementById('modal-override').remove()"
+                style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);
+                       background:transparent;color:var(--text-light,#aaa);cursor:pointer;font-size:0.9rem">
+                Cancelar
+            </button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+};
+
+window.aplicarOverride = async function(tipo, minutos) {
+    const modal = document.getElementById('modal-override');
+    if (modal) modal.remove();
+
+    try {
+        const abierto = tipo === 'abrir';
+        let expiraEn  = null;
+
+        if (minutos === 0) {
+            // Indefinido → sin expiración (solo override sin tiempo)
+            expiraEn = null;
+        } else if (minutos === -1) {
+            // "Hasta mañana" → medianoche de hoy
+            const manana = new Date();
+            manana.setDate(manana.getDate() + 1);
+            manana.setHours(0, 0, 0, 0);
+            expiraEn = manana;
+        } else {
+            expiraEn = new Date(Date.now() + minutos * 60 * 1000);
+        }
+
+        const data = { abierto, updatedAt: new Date() };
+        if (expiraEn) data.expiraEn = expiraEn;
+
+        await window.fsSetDoc(window.fsDoc(window.db, 'config', 'estado'), data);
+
+        const expTexto = expiraEn ? ` hasta las ${formatHora12(expiraEn)}` : ' indefinidamente';
+        toast(abierto ? `✅ Negocio abierto${expTexto}` : `🔒 Negocio cerrado${expTexto}`);
+        cargarEstadoNegocio();
+    } catch (err) {
+        toast('Error al cambiar estado: ' + err.message, true);
+    }
+};
+
+// Volver a modo automático (eliminar override)
+window.volverModoAutomatico = async function() {
+    try {
+        await window.fsDeleteDoc(window.fsDoc(window.db, 'config', 'estado'));
+        toast('🕐 Modo automático activado — siguiendo horario');
+        cargarEstadoNegocio();
+    } catch (err) {
+        toast('Error: ' + err.message, true);
+    }
+};
 
 window.reproducirSonidoPedido = reproducirSonidoPedido;
 
@@ -517,24 +644,9 @@ window.compartirPedidoWhatsApp = function(orderId) {
     window.open('https://wa.me/?text=' + mensaje, '_blank');
 };
 
-window.toggleEstadoNegocio = async function(abierto) {
-    try {
-        if (abierto) {
-            // Al abrir: eliminar el estado manual para que el horario automático tome control
-            await window.fsDeleteDoc(window.fsDoc(window.db, 'config', 'estado'));
-            toast('✅ Negocio abierto — modo automático activado');
-        } else {
-            // Al cerrar: guardar estado manual cerrado
-            await window.fsSetDoc(window.fsDoc(window.db, 'config', 'estado'), {
-                abierto: false,
-                updatedAt: new Date()
-            });
-            toast('🔒 Negocio cerrado manualmente');
-        }
-        cargarEstadoNegocio();
-    } catch (err) {
-        toast('Error al cambiar estado: ' + err.message, true);
-    }
+window.toggleEstadoNegocio = function(tipo) {
+    // tipo: 'abrir' | 'cerrar'
+    mostrarModalOverride(tipo);
 };
 
 // ════════════════════════════════════════════

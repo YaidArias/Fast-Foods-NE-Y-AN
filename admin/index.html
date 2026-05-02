@@ -8,6 +8,25 @@
     <link rel="stylesheet" href="/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ── Nuevos estados del card de negocio ── */
+        .estado-negocio-card.abierto      { border-left: 4px solid #27ae60; background: rgba(39,174,96,0.08); }
+        .estado-negocio-card.cerrado      { border-left: 4px solid #e74c3c; background: rgba(231,76,60,0.08); }
+        .estado-negocio-card.cerrado-auto { border-left: 4px solid #f39c12; background: rgba(243,156,18,0.08); }
+        .estado-negocio-card.abierto      .estado-subtitulo { color: #27ae60; }
+        .estado-negocio-card.cerrado      .estado-subtitulo { color: #e74c3c; }
+        .estado-negocio-card.cerrado-auto .estado-subtitulo { color: #f39c12; }
+        /* ── Botón volver a automático ── */
+        .btn-auto {
+            background: rgba(255,255,255,0.1) !important;
+            color: var(--text-light, #aaa) !important;
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            font-size: 0.82rem !important;
+        }
+        .btn-auto:hover { background: rgba(255,255,255,0.18) !important; }
+        /* ── Modal override tiempo ── */
+        #modal-override button:hover { opacity: 0.88; }
+    </style>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -150,11 +169,14 @@
                     <div class="estado-subtitulo" id="estado-subtitulo">Cargando...</div>
                 </div>
                 <div class="estado-toggle">
-                    <button id="btn-abrir" class="btn-estado-toggle btn-abrir" onclick="toggleEstadoNegocio(true)">
-                        <i class="fas fa-door-open"></i> Abrir ahora
+                    <button id="btn-abrir" class="btn-estado-toggle btn-abrir" onclick="toggleEstadoNegocio('abrir')" style="display:none">
+                        <i class="fas fa-door-open"></i> Abrir
                     </button>
-                    <button id="btn-cerrar" class="btn-estado-toggle btn-cerrar" onclick="toggleEstadoNegocio(false)">
-                        <i class="fas fa-door-closed"></i> Cerrar ahora
+                    <button id="btn-cerrar" class="btn-estado-toggle btn-cerrar" onclick="toggleEstadoNegocio('cerrar')">
+                        <i class="fas fa-door-closed"></i> Cerrar
+                    </button>
+                    <button id="btn-auto" class="btn-estado-toggle btn-auto" onclick="volverModoAutomatico()" style="display:none">
+                        <i class="fas fa-clock"></i> Automático
                     </button>
                 </div>
             </div>
@@ -186,7 +208,7 @@
                     </div>
                     <div class="field full">
                         <label><i class="fas fa-comment"></i> Mensaje de bienvenida</label>
-                        <textarea id="neg-bienvenida" rows="2" placeholder="¡Bienvenido! Pide tu comida favorita..."></textarea>
+                        <textarea id="neg-bienvenida" rows="2" placeholder="¡Bienvenid@! Pide tu comida favorita..."></textarea>
                     </div>
                     <div class="field">
                         <label><i class="fas fa-motorcycle"></i> Texto de domicilio</label>
