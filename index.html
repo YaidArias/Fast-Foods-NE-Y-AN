@@ -16,6 +16,18 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .hero-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+        .hero-badge-estado {
+            background: rgba(39, 174, 96, 0.85) !important;
+        }
+    </style>
 
     <!-- Firebase SDK -->
     <script type="module">
@@ -98,16 +110,16 @@
             <!-- Hero Section -->
             <section class="hero">
                 <div class="hero-content">
-                    <h2>¡Bienvenid@!</h2>
+                    <h2>¡Bienvenido!</h2>
                     <p>Pide tu comida favorita y te la llevamos gratis a tu casa 🛵</p>
                     <div class="hero-badges">
-                        <div class="hero-badge">
+                        <div class="hero-badge" id="badge-domicilio">
                             <i class="fas fa-motorcycle"></i>
-                            <span>Domicilio Gratis</span>
+                            <span id="badge-domicilio-text">Domicilio Gratis</span>
                         </div>
-                        <div class="hero-badge hero-badge-time" id="hero-tiempo" style="display:none">
-                            <i class="fas fa-clock"></i>
-                            <span id="hero-tiempo-text">25-35 min</span>
+                        <div class="hero-badge hero-badge-estado" id="badge-estado" style="display:none">
+                            <i class="fas fa-circle" style="font-size:0.55rem"></i>
+                            <span>Abierto ahora</span>
                         </div>
                     </div>
                 </div>
@@ -266,14 +278,9 @@
             <p>Tu pedido ha sido recibido correctamente.</p>
             <p class="success-order-id" id="success-order-id"></p>
             <p class="success-note">Puedes ver el estado de tu pedido en "Mis Pedidos"</p>
-            <div class="success-actions">
-                <button class="btn-primary" onclick="closeSuccess()">
-                    <i class="fas fa-utensils"></i> Seguir Comprando
-                </button>
-                <a id="btn-share-whatsapp" href="#" target="_blank" class="btn-whatsapp" style="display:none">
-                    <i class="fab fa-whatsapp"></i> Compartir por WhatsApp
-                </a>
-            </div>
+            <button class="btn-primary" onclick="closeSuccess()">
+                <i class="fas fa-utensils"></i> Seguir Comprando
+            </button>
         </div>
     </div>
 
