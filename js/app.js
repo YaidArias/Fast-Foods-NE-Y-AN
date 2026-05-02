@@ -240,8 +240,9 @@ function applyEstadoNegocio() {
     if (NEGOCIO_ABIERTO) {
         const badge = document.querySelector('.hero-badge');
         if (badge) {
-            badge.style.background = 'rgba(39,174,96,0.85)';
-            badge.innerHTML = '<i class="fas fa-circle" style="font-size:0.6rem"></i><span>Abierto ahora</span>';
+            badge.style.background = '';
+            const spanBadge = badge.querySelector('span');
+            if (spanBadge) spanBadge.textContent = NEGOCIO.domicilio || 'Domicilio Gratis';
         }
     } else {
         const banner = document.createElement('div');
