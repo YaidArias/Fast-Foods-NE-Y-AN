@@ -625,20 +625,30 @@ window.compartirPedidoWhatsApp = function(orderId) {
     if (!pedido) return;
 
     const itemsTexto = (pedido.items || [])
-        .map(i => `  - ${i.quantity}x ${i.name} ($${(i.price || 0).toLocaleString('es-CO')})`)
+        .map(i => {
+            const subtotal = (i.price || 0) * (i.quantity || 1);
+            return `  %E2%80%A2 ${i.quantity}x ${encodeURIComponent(i.name)}%0A    $${(i.price || 0).toLocaleString('es-CO')} c/u %E2%86%92 $${subtotal.toLocaleString('es-CO')}`;
+        })
         .join('%0A');
 
-    const notas = pedido.notes ? `%0A%F0%9F%93%9D Notas: ${pedido.notes}` : '';
+    const notas = pedido.notes
+        ? `%0A%F0%9F%93%9D *Notas:* ${encodeURIComponent(pedido.notes)}`
+        : '';
+
+    const pagoIconos = { 'Efectivo':'%F0%9F%92%B5', 'Nequi':'%F0%9F%93%B2', 'Daviplata':'%F0%9F%93%B2', 'Bre-B':'%F0%9F%8F%A6' };
+    const pagoIcono = pagoIconos[pedido.paymentMethod] || '%F0%9F%92%B3';
 
     const mensaje =
-        `%F0%9F%94%94 *NUEVO PEDIDO NE%26AN*%0A%0A` +
+        `%F0%9F%94%94 *PEDIDO DOMICILIO NE%26AN*%0A` +
+        `%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%0A%0A` +
         `%F0%9F%93%8B *Orden:* ${pedido.orderId}%0A` +
-        `%F0%9F%91%A4 *Cliente:* ${pedido.customerName}%0A` +
+        `%F0%9F%91%A4 *Cliente:* ${encodeURIComponent(pedido.customerName)}%0A` +
         `%F0%9F%93%B1 *Tel:* ${pedido.customerPhone}%0A` +
-        `%F0%9F%93%8D *Direcci%C3%B3n:* ${pedido.customerAddress}%0A` +
-        `%F0%9F%92%B3 *Pago:* ${pedido.paymentMethod}%0A%0A` +
+        `%F0%9F%93%8D *Direcci%C3%B3n:* ${encodeURIComponent(pedido.customerAddress)}%0A%0A` +
         `%F0%9F%9B%92 *PRODUCTOS:*%0A${itemsTexto}%0A%0A` +
-        `%F0%9F%92%B0 *TOTAL: $${(pedido.total || 0).toLocaleString('es-CO')}*` +
+        `%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%E2%94%80%0A` +
+        `%F0%9F%92%B0 *TOTAL: $${(pedido.total || 0).toLocaleString('es-CO')}*%0A` +
+        `${pagoIcono} *Forma de pago: ${encodeURIComponent(pedido.paymentMethod)}*` +
         notas;
 
     window.open('https://wa.me/?text=' + mensaje, '_blank');
