@@ -309,13 +309,21 @@ body {
 
 .product-image {
     width: 100%;
-    height: 180px;
+    height: 200px;
     background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
     overflow: hidden;
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    display: block;
 }
 
 .product-image::before {
@@ -995,7 +1003,7 @@ body {
     }
 
     .product-image {
-        height: 150px;
+        height: 190px;
     }
 }
 
@@ -1627,15 +1635,17 @@ body {
 .modal-product-image-full {
     position: relative;
     width: 100%;
-    height: 220px;
+    height: 260px;
     overflow: hidden;
     border-radius: 16px 16px 0 0;
+    background: #111;
 }
 
 .modal-product-img-full {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     display: block;
 }
 
