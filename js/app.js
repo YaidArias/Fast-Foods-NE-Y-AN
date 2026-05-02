@@ -74,7 +74,14 @@ async function loadFirestoreData() {
         let estadoManual = null;
         snap.forEach(d => {
             if (d.id === 'negocio') NEGOCIO = { ...NEGOCIO_DEFAULT, ...d.data() };
-            if (d.id === 'estado')  estadoManual = d.data();
+            if (d.id === 'estado') {
+                const est = d.data();
+                // Ignorar override si ya expiró
+                const expira = est.expiraEn ? (est.expiraEn.toDate ? est.expiraEn.toDate() : new Date(est.expiraEn)) : null;
+                if (!expira || new Date() < expira) {
+                    estadoManual = est;
+                }
+            }
         });
 
         const dentroDeHorario = calcularSiEstaAbierto();
