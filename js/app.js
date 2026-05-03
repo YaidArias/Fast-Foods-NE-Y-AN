@@ -487,6 +487,56 @@ function removeCartItem(index) {
 // ============================================
 // CHECKOUT & SEND ORDER
 // ============================================
+const PAGO_INFO = {
+    'Nequi': {
+        clase:  'pago-nequi',
+        titulo: '📲 Paga con Nequi',
+        numero: '3171356651',
+        desc:   'Abre tu app Nequi → Cobros → ingresa el número y el valor exacto del pedido. Comparte el comprobante al finalizar.'
+    },
+    'Daviplata': {
+        clase:  'pago-daviplata',
+        titulo: '💳 Paga con Daviplata',
+        numero: '3171356651',
+        desc:   'Abre tu app Daviplata → Enviar dinero → ingresa el número y el valor exacto del pedido. Comparte el comprobante al finalizar.'
+    },
+    'Bre-B': {
+        clase:  'pago-breb',
+        titulo: '🏦 Paga con Bre-B',
+        numero: '3171356651',
+        desc:   'Desde tu app bancaria → Bre-B → ingresa el número y el valor exacto del pedido. Comparte el comprobante al finalizar.'
+    }
+};
+
+window.mostrarInstruccionesPago = function(metodo) {
+    const box = document.getElementById('pago-instrucciones');
+    if (!box) return;
+    const info = PAGO_INFO[metodo];
+    if (!info) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+    box.style.display = 'block';
+    box.innerHTML = `
+        <div class="pago-box ${info.clase}">
+            <div class="pago-box-titulo">${info.titulo}</div>
+            <div class="pago-box-numero">${info.numero}</div>
+            <div class="pago-box-desc">${info.desc}</div>
+            <button class="btn-copiar-numero" onclick="copiarNumeroPago('${info.numero}', this)">
+                <i class="fas fa-copy"></i> Copiar número
+            </button>
+        </div>`;
+};
+
+window.copiarNumeroPago = function(numero, btn) {
+    navigator.clipboard.writeText(numero).then(() => {
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
+        btn.style.opacity = '0.7';
+        setTimeout(() => { btn.innerHTML = original; btn.style.opacity = ''; }, 2000);
+    }).catch(() => {
+        showToast('Número: ' + numero);
+    });
+};
+
 function checkout() {
     if (cart.length === 0) { showToast('Agrega productos primero'); return; }
     closeCart();
@@ -505,6 +555,9 @@ function checkout() {
 function closeCheckout() {
     document.getElementById('checkout-modal').classList.remove('active');
     document.body.style.overflow = '';
+    // Resetear instrucciones de pago
+    const box = document.getElementById('pago-instrucciones');
+    if (box) { box.style.display = 'none'; box.innerHTML = ''; }
 }
 
 async function sendOrder(event) {

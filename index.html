@@ -59,6 +59,59 @@
             text-decoration: none;
         }
         .btn-wa-pedido:hover { background: #1ebe5d; }
+
+        /* ── Instrucciones de pago ── */
+        .pago-box {
+            margin-top: 12px;
+            padding: 16px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        .pago-box-titulo {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            opacity: 0.7;
+        }
+        .pago-box-numero {
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        .pago-box-desc {
+            font-size: 0.85rem;
+            opacity: 0.75;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .btn-copiar-numero {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            width: 100%;
+            padding: 11px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 700;
+            transition: opacity 0.2s;
+        }
+        .btn-copiar-numero:hover { opacity: 0.85; }
+        .pago-nequi   { border-color: rgba(255,107,0,0.4); }
+        .pago-nequi   .pago-box-titulo { color: #ff6b00; }
+        .pago-nequi   .btn-copiar-numero { background: #ff6b00; color: #fff; }
+        .pago-daviplata { border-color: rgba(220,30,50,0.4); }
+        .pago-daviplata .pago-box-titulo { color: #dc1e32; }
+        .pago-daviplata .btn-copiar-numero { background: #dc1e32; color: #fff; }
+        .pago-breb    { border-color: rgba(0,123,255,0.4); }
+        .pago-breb    .pago-box-titulo { color: #007bff; }
+        .pago-breb    .btn-copiar-numero { background: #007bff; color: #fff; }
     </style>
 
     <!-- Firebase SDK -->
@@ -271,22 +324,24 @@
                     <label><i class="fas fa-money-bill-wave"></i> Método de pago</label>
                     <div class="payment-options">
                         <label class="payment-option">
-                            <input type="radio" name="payment" value="Efectivo" checked>
+                            <input type="radio" name="payment" value="Efectivo" checked onchange="mostrarInstruccionesPago(this.value)">
                             <span><i class="fas fa-money-bill"></i> Efectivo</span>
                         </label>
                         <label class="payment-option">
-                            <input type="radio" name="payment" value="Nequi">
+                            <input type="radio" name="payment" value="Nequi" onchange="mostrarInstruccionesPago(this.value)">
                             <span><i class="fas fa-mobile-alt"></i> Nequi</span>
                         </label>
                         <label class="payment-option">
-                            <input type="radio" name="payment" value="Daviplata">
+                            <input type="radio" name="payment" value="Daviplata" onchange="mostrarInstruccionesPago(this.value)">
                             <span><i class="fas fa-wallet"></i> Daviplata</span>
                         </label>
                         <label class="payment-option">
-                            <input type="radio" name="payment" value="Bre-B">
+                            <input type="radio" name="payment" value="Bre-B" onchange="mostrarInstruccionesPago(this.value)">
                             <span><i class="fas fa-university"></i> Bre-B</span>
                         </label>
                     </div>
+                    <!-- Instrucciones dinámicas de pago -->
+                    <div id="pago-instrucciones" style="display:none"></div>
                 </div>
                 <div class="order-summary">
                     <h4>Resumen del pedido</h4>
