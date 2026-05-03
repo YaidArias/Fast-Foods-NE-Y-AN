@@ -514,6 +514,10 @@ window.mostrarInstruccionesPago = function(metodo) {
     const info = PAGO_INFO[metodo];
     if (!info) { box.style.display = 'none'; box.innerHTML = ''; return; }
 
+    const tel = ((NEGOCIO && NEGOCIO.tel1) || '3156848558').replace(/[^0-9]/g, '');
+    const texto = encodeURIComponent(`Hola! Les envío el comprobante de pago de mi pedido 🧾`);
+    const waUrl = `https://wa.me/57${tel}?text=${texto}`;
+
     box.style.display = 'block';
     box.innerHTML = `
         <div class="pago-box ${info.clase}">
@@ -523,6 +527,9 @@ window.mostrarInstruccionesPago = function(metodo) {
             <button type="button" class="btn-copiar-numero" onclick="copiarNumeroPago('${info.numero}', this)">
                 <i class="fas fa-copy"></i> Copiar número
             </button>
+            <a href="${waUrl}" target="_blank" class="btn-comprobante-wa">
+                <i class="fab fa-whatsapp"></i> Enviar comprobante por WhatsApp
+            </a>
         </div>`;
 };
 
