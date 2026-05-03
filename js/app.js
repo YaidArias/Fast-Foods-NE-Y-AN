@@ -520,7 +520,7 @@ window.mostrarInstruccionesPago = function(metodo) {
             <div class="pago-box-titulo">${info.titulo}</div>
             <div class="pago-box-numero">${info.numero}</div>
             <div class="pago-box-desc">${info.desc}</div>
-            <button class="btn-copiar-numero" onclick="copiarNumeroPago('${info.numero}', this)">
+            <button type="button" class="btn-copiar-numero" onclick="copiarNumeroPago('${info.numero}', this)">
                 <i class="fas fa-copy"></i> Copiar número
             </button>
         </div>`;
